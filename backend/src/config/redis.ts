@@ -8,7 +8,13 @@ const REDIS_PORT = Number(process.env.REDIS_PORT!);
 const REDIS_PASSWORD = process.env.REDIS_PASSWORD || "";
 
 export const redisClient = createClient({
-  url: `redis://${REDIS_PASSWORD ? REDIS_PASSWORD + "@" : ""}${REDIS_HOST}:${REDIS_PORT}`,
+  socket: {
+    host: process.env.REDIS_HOST!,
+    port: Number(process.env.REDIS_PORT!),
+  },
+  ...(process.env.REDIS_PASSWORD
+    ? { password: process.env.REDIS_PASSWORD }
+    : {}),
 });
 
 redisClient.on("error", (err) => console.error("❌ Redis Client Error", err));

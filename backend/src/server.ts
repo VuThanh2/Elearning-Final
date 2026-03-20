@@ -13,9 +13,27 @@ app.get("/", (req, res) => {
   res.send("Hello Backend with DBs!");
 });
 
+import mongoose from "mongoose";
+
+const testMongo = async () => {
+  if (!mongoose.connection.db) {
+    console.error("❌ MongoDB not ready yet");
+    return;
+  }
+
+  const collection = mongoose.connection.db.collection("test");
+
+  await collection.insertOne({ name: "Vu" });
+
+  const data = await collection.find().toArray();
+
+  console.log("✅ Mongo data:", data);
+};
+
 const startServer = async () => {
   try {
     await connectMongo();
+    await testMongo();
     const oracleConn = await connectOracle();
     await connectRedis();
 

@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: mongo_lms
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  redis:
+    image: redis:7
+    container_name: redis_lms
+    restart: always
+    command: redis-server --requirepass 123456
+    ports:
+      - "6379:6379"
+
+  oracle:
+    image: gvenzl/oracle-xe:21-slim
+    container_name: oracle_lms
+    restart: always
+    ports:
+      - "1521:1521"
+    environment:
+      ORACLE_PASSWORD: 123456
+      APP_USER: elearning_user
+      APP_USER_PASSWORD: 123456
+    volumes:
+      - oracle_data:/opt/oracle/oradata
+
+volumes:
+  mongo_data:
+  oracle_data:
