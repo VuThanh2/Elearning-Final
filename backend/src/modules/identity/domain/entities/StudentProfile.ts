@@ -1,4 +1,4 @@
-import { FullName } from "../value-objects/FullName";
+import { FullName } from "../value-objects/Fullname";
 
 export class StudentProfile {
   readonly userId: string;
