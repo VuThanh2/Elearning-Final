@@ -23,4 +23,10 @@ export class FullName {
   equals(other: FullName): boolean {
     return this._value === other._value;
   }
+
+  // Dùng khi reconstruct từ DB — bỏ qua validation vì data đã được
+  // validate trước khi lưu, tránh throw lỗi không cần thiết khi load.
+  static fromPersisted(value: string): FullName {
+    return new FullName(value);
+  }
 }

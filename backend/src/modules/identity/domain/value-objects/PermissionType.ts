@@ -18,3 +18,9 @@ export enum PermissionType {
   // Academic Context
   VIEW_SECTION = "VIEW_SECTION",
 }
+
+// Dùng trong PermissionMapper để validate string từ Oracle
+// trước khi cast sang enum — tránh runtime error nếu DB có giá trị lạ.
+export function isValidPermissionType(value: string): value is PermissionType {
+  return Object.values(PermissionType).includes(value as PermissionType);
+}

@@ -1,8 +1,5 @@
-export interface RequestResetPasswordDTO {
+export interface ResetPasswordDTO {
   email: string;
-}
-
-export interface ConfirmResetPasswordDTO {
   newPassword: string;
   confirmPassword: string;
 }

@@ -14,9 +14,8 @@ export interface ITokenProvider {
   generate(payload: TokenPayload): string;
 
   // Giải mã và xác thực token từ request header.
-  // Trả về payload nếu hợp lệ, null nếu token sai / hết hạn /
-  // đã bị blacklist (logout rồi).
-  verify(token: string): TokenPayload | null;
+  // Trả về payload nếu hợp lệ, null nếu token sai / hết hạn / đã bị blacklist (logout rồi).
+  verify(token: string): Promise<TokenPayload | null>;
 
   // Đưa token vào blacklist trên Redis — token này không dùng được nữa.
   // Dùng trong: AuthenticationUseCase khi user logout.

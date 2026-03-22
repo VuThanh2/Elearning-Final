@@ -1,3 +1,4 @@
+import { FullName } from "../value-objects/Fullname";
 import { Password } from "../value-objects/Password";
 import { PermissionType } from "../value-objects/PermissionType";
 import { Role } from "./Role";
@@ -7,6 +8,7 @@ import { TeacherProfile } from "./TeacherProfile";
 export class User {
   readonly userId: string;
   readonly email: string;
+  readonly fullName: FullName;
   readonly role: Role;
   readonly profile: StudentProfile | TeacherProfile;
 
@@ -17,12 +19,14 @@ export class User {
   constructor(params: {
     userId: string;
     email: string;
+    fullName: FullName;
     role: Role;
     passwordHash: Password;
     profile: StudentProfile | TeacherProfile;
   }) {
     this.userId = params.userId;
     this.email = params.email;
+    this.fullName = params.fullName;
     this.role = params.role;
     this._passwordHash = params.passwordHash;
     this.profile = params.profile;
