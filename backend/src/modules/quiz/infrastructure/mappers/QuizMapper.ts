@@ -7,26 +7,19 @@ import { TimeLimit } from "../../domain/value-objects/TimeLimit";
 import { Deadline } from "../../domain/value-objects/Deadline";
 import { MaxAttempts } from "../../domain/value-objects/MaxAttempts";
 import { Points } from "../../domain/value-objects/Points";
-import {
-  IQuizDocument,
-  IQuestionDocument,
-  IAnswerOptionDocument,
-} from "../models/QuizModel";
+import { IQuizDocument, IQuestionDocument, IAnswerOptionDocument } from "../models/QuizModel";
+import { AnswerOptionResponseDTO, QuestionResponseDTO, QuizDetailDTO, QuizSummaryDTO } from "../../application/dtos/QuizResponseDTO";
 
-// toDomain()      — IQuizDocument (raw MongoDB) → Quiz entity
-// toPersistence() — Quiz entity → plain object để Mongoose save/upsert
-
-// Lý do dùng fromPersisted() thay vì create() cho value objects:
-//   Data từ DB đã được validate trước khi lưu — validate lại khi load
-//   chỉ tốn CPU và có thể throw lỗi không cần thiết nếu business rule
-//   thay đổi sau khi data đã tồn tại trong DB.
+// 3 nhóm methods:
+//   toDomain()        — IQuizDocument (MongoDB) → Quiz entity
+//   toPersistence()   — Quiz entity → plain object cho Mongoose upsert
+//   toDetailDTO()     — Quiz entity → QuizDetailDTO (HTTP response, có questions)
+//   toSummaryDTO()    — Quiz entity → QuizSummaryDTO (HTTP response, không có questions)
 
 export class QuizMapper {
 
-  //MongoDB document → Quiz aggregate (bao gồm Question + AnswerOption)
+  //MongoDB document → Quiz aggregate
   static toDomain(doc: IQuizDocument): Quiz {
-    // Guard: validate enum values từ DB trước khi cast —
-    // tránh runtime error nếu DB có giá trị không hợp lệ
     if (!isValidQuizStatus(doc.status)) {
       throw new Error(
         `QuizMapper: unknown QuizStatus "${doc.status}" cho quizId "${doc._id}".`
@@ -55,9 +48,7 @@ export class QuizMapper {
     });
   }
 
-  //Quiz entity → plain object cho Mongoose
-  // Trả về plain object (không phải Mongoose Document) vì Repository
-  // dùng replaceOne/upsert — Mongoose nhận plain object là đủ.
+  //Quiz entity → plain object cho Mongoose replaceOne/upsert
   static toPersistence(quiz: Quiz): IQuizDocument {
     return {
       _id:              quiz.quizId,
@@ -77,7 +68,55 @@ export class QuizMapper {
     } as IQuizDocument;
   }
 
-  // Private helpers — Question và AnswerOption
+  //Quiz entity → QuizDetailDTO
+  // Dùng cho: GET /quizzes/:id
+  // Bao gồm toàn bộ questions + options + điểm mỗi câu
+  static toDetailDTO(quiz: Quiz): QuizDetailDTO {
+    const questionPoints = quiz.questionPoints;
+
+    return {
+      quizId:           quiz.quizId,
+      teacherId:        quiz.teacherId,
+      sectionId:        quiz.sectionId,
+      title:            quiz.title,
+      description:      quiz.description,
+      timeLimitMinutes: quiz.timeLimit.minutes,
+      deadlineAt:       quiz.deadline.value.toISOString(),
+      maxAttempts:      quiz.maxAttempts.value,
+      maxScore:         quiz.maxScore.value,
+      questionPoints,
+      status:           quiz.status,
+      hiddenReason:     quiz.hiddenReason,
+      questions:        [...quiz.questions].map((q) =>
+                          QuizMapper.questionToResponseDTO(q, questionPoints)
+                        ),
+      totalQuestions:   quiz.questions.length,
+      createdAt:        quiz.createdAt.toISOString(),
+      updatedAt:        quiz.updatedAt?.toISOString() ?? null,
+    };
+  }
+
+  //Quiz entity → QuizSummaryDTO
+  // Dùng cho: GET /quizzes (danh sách)
+  // Không bao gồm questions để giảm payload
+  static toSummaryDTO(quiz: Quiz): QuizSummaryDTO {
+    return {
+      quizId:           quiz.quizId,
+      sectionId:        quiz.sectionId,
+      title:            quiz.title,
+      description:      quiz.description,
+      timeLimitMinutes: quiz.timeLimit.minutes,
+      deadlineAt:       quiz.deadline.value.toISOString(),
+      maxAttempts:      quiz.maxAttempts.value,
+      maxScore:         quiz.maxScore.value,
+      status:           quiz.status,
+      totalQuestions:   quiz.questions.length,
+      createdAt:        quiz.createdAt.toISOString(),
+      updatedAt:        quiz.updatedAt?.toISOString() ?? null,
+    };
+  }
+
+  // Private helpers
   private static questionToDomain(
     doc: IQuestionDocument,
     quizId: string
@@ -101,9 +140,7 @@ export class QuizMapper {
     });
   }
 
-  private static questionToPersistence(
-    question: Question
-  ): IQuestionDocument {
+  private static questionToPersistence(question: Question): IQuestionDocument {
     return {
       questionId:    question.questionId,
       content:       question.content,
@@ -114,21 +151,46 @@ export class QuizMapper {
     };
   }
 
+  private static questionToResponseDTO(
+    question: Question,
+    questionPoints: number
+  ): QuestionResponseDTO {
+    return {
+      questionId:    question.questionId,
+      content:       question.content,
+      questionType:  question.questionType,
+      answerOptions: [...question.answerOptions].map(
+        QuizMapper.answerOptionToResponseDTO
+      ),
+      points: questionPoints,
+    };
+  }
+
   private static answerOptionToDomain(
     doc: IAnswerOptionDocument,
     questionId: string
   ): AnswerOption {
     return new AnswerOption({
-      optionId:   doc.optionId,
+      optionId:  doc.optionId,
       questionId,
-      content:    doc.content,
-      isCorrect:  doc.isCorrect,
+      content:   doc.content,
+      isCorrect: doc.isCorrect,
     });
   }
 
   private static answerOptionToPersistence(
     option: AnswerOption
   ): IAnswerOptionDocument {
+    return {
+      optionId:  option.optionId,
+      content:   option.content,
+      isCorrect: option.isCorrect,
+    };
+  }
+
+  private static answerOptionToResponseDTO(
+    option: AnswerOption
+  ): AnswerOptionResponseDTO {
     return {
       optionId:  option.optionId,
       content:   option.content,
