@@ -1,5 +1,5 @@
 import { IQuizRepository }        from "../../domain/interface-repositories/IQuizRepository";
-import { IAcademicQueryService }  from "../../../academic/application/interfaces/IAcademicQueryService";
+import { IAcademicQueryService }  from "../../../academic";
 import { IDateTimeProvider }      from "../interfaces/IDateTimeProvider";
 import { IEventPublisher }        from "../interfaces/IEventPublisher";
 import { CreateQuizDTO }          from "../dtos/CreateQuizDTO";
@@ -70,6 +70,7 @@ export class CreateQuizUseCase {
       deadline:    Deadline.create(deadline, now),
       maxAttempts: MaxAttempts.create(dto.maxAttempts),
       maxScore:    Points.create(dto.maxScore),
+      now,
     });
 
     // Bước 5: persist

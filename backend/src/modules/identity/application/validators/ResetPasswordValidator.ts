@@ -1,4 +1,5 @@
 import { ResetPasswordDTO } from "../dtos/ResetPasswordDTO";
+import { Password } from "../../domain/value-objects/Password";
 
 // Validator chỉ check những gì có thể biết từ input mà KHÔNG cần truy vấn DB:
 //   ✓ email có rỗng không
@@ -29,21 +30,12 @@ export function validateResetPasswordDTO(dto: ResetPasswordDTO): void {
     throw new Error("ValidationError: Xác nhận mật khẩu không được để trống.");
   }
 
-  // Check PasswordMismatch trước password policy — trả lỗi rõ ràng hơn
-  // cho user khi họ gõ nhầm confirm password
+  // Check confirm password match new password trước để tránh gọi Password.create() không cần thiết nếu 2 mật khẩu không khớp
   if (dto.newPassword !== dto.confirmPassword) {
     throw new Error("PasswordMismatch: Mật khẩu xác nhận không khớp.");
   }
 
-  if (dto.newPassword.length < 8) {
-    throw new Error("PasswordPolicyViolation: Mật khẩu phải có ít nhất 8 ký tự.");
-  }
-
-  if (!/[A-Z]/.test(dto.newPassword)) {
-    throw new Error("PasswordPolicyViolation: Mật khẩu phải có ít nhất 1 chữ hoa.");
-  }
-
-  if (!/[0-9]/.test(dto.newPassword)) {
-    throw new Error("PasswordPolicyViolation: Mật khẩu phải có ít nhất 1 chữ số.");
-  }
+  // Delegate password policy cho domain value object —
+  // nguồn duy nhất cho business rule về password
+  Password.create(dto.newPassword);
 }

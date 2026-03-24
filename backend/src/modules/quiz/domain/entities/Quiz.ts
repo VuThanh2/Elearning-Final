@@ -100,6 +100,7 @@ export class Quiz {
     deadline: Deadline;
     maxAttempts: MaxAttempts;
     maxScore: Points;
+    now: Date; 
   }): Quiz {
     const now = new Date();
     return new Quiz({
@@ -114,7 +115,7 @@ export class Quiz {
       maxScore:    params.maxScore,
       status:      QuizStatus.DRAFT,
       questions:   [],
-      createdAt:   now,
+      createdAt:   params.now,
       hiddenReason: null,
       updatedAt:   null,
     });
