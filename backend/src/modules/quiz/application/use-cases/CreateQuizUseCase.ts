@@ -1,17 +1,17 @@
-import { IQuizRepository } from "../../domain/interface-repositories/IQuizRepository";
-import { IAcademicIntegrationProvider } from "../interfaces/IAcademicIntegrationProvider";
-import { IDateTimeProvider } from "../interfaces/IDateTimeProvider";
-import { IEventPublisher } from "../interfaces/IEventPublisher";
-import { CreateQuizDTO } from "../dtos/CreateQuizDTO";
-import { QuizDetailDTO } from "../dtos/QuizResponseDTO";
-import { validateCreateQuiz } from "../validators/QuizValidator";
-import { Quiz } from "../../domain/entities/Quiz";
-import { TimeLimit } from "../../domain/value-objects/TimeLimit";
-import { Deadline } from "../../domain/value-objects/Deadline";
-import { MaxAttempts } from "../../domain/value-objects/MaxAttempts";
-import { Points } from "../../domain/value-objects/Points";
-import { QuizCreated } from "../../domain/events/QuizCreated";
-import { QuizMapper } from "../../infrastructure/mappers/QuizMapper";
+import { IQuizRepository }        from "../../domain/interface-repositories/IQuizRepository";
+import { IAcademicQueryService }  from "../../../academic/application/interfaces/IAcademicQueryService";
+import { IDateTimeProvider }      from "../interfaces/IDateTimeProvider";
+import { IEventPublisher }        from "../interfaces/IEventPublisher";
+import { CreateQuizDTO }          from "../dtos/CreateQuizDTO";
+import { QuizDetailDTO }          from "../dtos/QuizResponseDTO";
+import { validateCreateQuiz }     from "../validators/QuizValidator";
+import { Quiz }                   from "../../domain/entities/Quiz";
+import { TimeLimit }              from "../../domain/value-objects/TimeLimit";
+import { Deadline }               from "../../domain/value-objects/Deadline";
+import { MaxAttempts }            from "../../domain/value-objects/MaxAttempts";
+import { Points }                 from "../../domain/value-objects/Points";
+import { QuizCreated }            from "../../domain/events/QuizCreated";
+import { QuizMapper }             from "../../infrastructure/mappers/QuizMapper";
 
 // Flow:
 //   1. Validate format DTO
@@ -21,13 +21,12 @@ import { QuizMapper } from "../../infrastructure/mappers/QuizMapper";
 //   5. Persist
 //   6. Publish QuizCreated event
 //   7. Trả về QuizDetailDTO
-
 export class CreateQuizUseCase {
   constructor(
-    private readonly quizRepository: IQuizRepository,
-    private readonly academicProvider: IAcademicIntegrationProvider,
+    private readonly quizRepository:   IQuizRepository,
+    private readonly academicService:  IAcademicQueryService,
     private readonly dateTimeProvider: IDateTimeProvider,
-    private readonly eventPublisher: IEventPublisher,
+    private readonly eventPublisher:   IEventPublisher,
   ) {}
 
   async execute(
@@ -38,7 +37,7 @@ export class CreateQuizUseCase {
     validateCreateQuiz(dto);
 
     // Bước 2: section có tồn tại không
-    const sectionExists = await this.academicProvider.sectionExists(
+    const sectionExists = await this.academicService.sectionExists(
       dto.sectionId
     );
     if (!sectionExists) {
@@ -48,7 +47,7 @@ export class CreateQuizUseCase {
     }
 
     // Bước 3: Teacher có được dạy section này không
-    const isAssigned = await this.academicProvider.isTeacherAssignedToSection(
+    const isAssigned = await this.academicService.isTeacherAssignedToSection(
       teacherId,
       dto.sectionId
     );
@@ -58,7 +57,7 @@ export class CreateQuizUseCase {
       );
     }
 
-    // Bước 4: tạo Quiz entity — parse value objects từ DTO
+    // Bước 4: tạo Quiz entity
     const now      = this.dateTimeProvider.now();
     const deadline = new Date(dto.deadlineAt);
 
@@ -76,7 +75,7 @@ export class CreateQuizUseCase {
     // Bước 5: persist
     await this.quizRepository.save(quiz);
 
-    // Bước 6: publish event → Analytics Context lắng nghe
+    // Bước 6: publish event
     await this.eventPublisher.publish(
       new QuizCreated(quiz.quizId, teacherId, quiz.sectionId, quiz.title)
     );

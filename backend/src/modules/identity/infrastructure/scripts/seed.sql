@@ -193,7 +193,7 @@ SELECT
     'admin@school.edu.vn',
     '$2b$10$ul9gVsHrrmY1s.BjhVXnvefYXoZ7FaD6r84pgLzNZj5tOkoYVHBDK',
     'System Admin',
-    R.ROLE_ID, 0
+    R.ROLE_ID
 FROM ROLES R WHERE R.ROLE_NAME = 'Admin'
 AND NOT EXISTS (SELECT 1 FROM USERS WHERE EMAIL = 'admin@school.edu.vn');
 
@@ -205,7 +205,7 @@ SELECT
     'nguyen.van.an@school.edu.vn',
     '$2b$10$pZpXuliMF7VgQNuAkF5NMeQOxH2BsVSx8jCqTU1.prDFOIFZqIAJW',
     'Nguyễn Văn An',
-    R.ROLE_ID, 0
+    R.ROLE_ID
 FROM ROLES R WHERE R.ROLE_NAME = 'Teacher'
 AND NOT EXISTS (SELECT 1 FROM USERS WHERE EMAIL = 'nguyen.van.an@school.edu.vn');
 
@@ -219,7 +219,7 @@ SELECT
     'tran.thi.bich@school.edu.vn',
     '$2b$10$pZpXuliMF7VgQNuAkF5NMeQOxH2BsVSx8jCqTU1.prDFOIFZqIAJW',
     'Trần Thị Bích',
-    R.ROLE_ID, 0
+    R.ROLE_ID
 FROM ROLES R WHERE R.ROLE_NAME = 'Teacher'
 AND NOT EXISTS (SELECT 1 FROM USERS WHERE EMAIL = 'tran.thi.bich@school.edu.vn');
 
@@ -233,7 +233,7 @@ SELECT
     'le.minh.duc@school.edu.vn',
     '$2b$10$pZpXuliMF7VgQNuAkF5NMeQOxH2BsVSx8jCqTU1.prDFOIFZqIAJW',
     'Lê Minh Đức',
-    R.ROLE_ID, 0
+    R.ROLE_ID
 FROM ROLES R WHERE R.ROLE_NAME = 'Teacher'
 AND NOT EXISTS (SELECT 1 FROM USERS WHERE EMAIL = 'le.minh.duc@school.edu.vn');
 
@@ -249,7 +249,7 @@ SELECT
     'sv001@student.school.edu.vn',
     '$2b$10$dpWgPcUSPz52lisQnwyqW.1JHSX8hEq4UqTmD0ex/XoGK1ZdpagsG',
     'Phạm Quốc Bảo',
-    R.ROLE_ID, 0
+    R.ROLE_ID
 FROM ROLES R WHERE R.ROLE_NAME = 'Student'
 AND NOT EXISTS (SELECT 1 FROM USERS WHERE EMAIL = 'sv001@student.school.edu.vn');
 
@@ -263,7 +263,7 @@ SELECT
     'sv002@student.school.edu.vn',
     '$2b$10$dpWgPcUSPz52lisQnwyqW.1JHSX8hEq4UqTmD0ex/XoGK1ZdpagsG',
     'Hoàng Thị Mai',
-    R.ROLE_ID, 0
+    R.ROLE_ID
 FROM ROLES R WHERE R.ROLE_NAME = 'Student'
 AND NOT EXISTS (SELECT 1 FROM USERS WHERE EMAIL = 'sv002@student.school.edu.vn');
 
@@ -277,7 +277,7 @@ SELECT
     'sv003@student.school.edu.vn',
     '$2b$10$dpWgPcUSPz52lisQnwyqW.1JHSX8hEq4UqTmD0ex/XoGK1ZdpagsG',
     'Vũ Đình Khoa',
-    R.ROLE_ID, 0
+    R.ROLE_ID
 FROM ROLES R WHERE R.ROLE_NAME = 'Student'
 AND NOT EXISTS (SELECT 1 FROM USERS WHERE EMAIL = 'sv003@student.school.edu.vn');
 
@@ -291,7 +291,7 @@ SELECT
     'sv004@student.school.edu.vn',
     '$2b$10$dpWgPcUSPz52lisQnwyqW.1JHSX8hEq4UqTmD0ex/XoGK1ZdpagsG',
     'Đỗ Thanh Tuyền',
-    R.ROLE_ID, 0
+    R.ROLE_ID
 FROM ROLES R WHERE R.ROLE_NAME = 'Student'
 AND NOT EXISTS (SELECT 1 FROM USERS WHERE EMAIL = 'sv004@student.school.edu.vn');
 

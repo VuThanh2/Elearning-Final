@@ -32,7 +32,7 @@ export class UserRepository implements IUserRepository {
   // Dùng trong: AuthenticationUseCase (login), ResetPasswordUseCase
   async findByEmail(email: string): Promise<User | null> {
     const result = await this.connection.execute<UserModel>(
-      `SELECT USER_ID, EMAIL, PASSWORD_HASH, FULL_NAME, ROLE_ID, IS_LOCKED
+      `SELECT USER_ID, EMAIL, PASSWORD_HASH, FULL_NAME, ROLE_ID
        FROM USERS
        WHERE EMAIL = :email`,
       { email },
@@ -48,7 +48,7 @@ export class UserRepository implements IUserRepository {
   // Dùng trong: requireAuthentication middleware (verify JWT)
   async findById(userId: string): Promise<User | null> {
     const result = await this.connection.execute<UserModel>(
-      `SELECT USER_ID, EMAIL, PASSWORD_HASH, FULL_NAME, ROLE_ID, IS_LOCKED
+      `SELECT USER_ID, EMAIL, PASSWORD_HASH, FULL_NAME, ROLE_ID
        FROM USERS
        WHERE USER_ID = :userId`,
       { userId },
@@ -68,8 +68,7 @@ export class UserRepository implements IUserRepository {
 
     await this.connection.execute(
       `UPDATE USERS
-       SET PASSWORD_HASH = :PASSWORD_HASH,
-           IS_LOCKED     = :IS_LOCKED
+       SET PASSWORD_HASH = :PASSWORD_HASH
        WHERE USER_ID = :USER_ID`,
       row,
       { autoCommit: true }
@@ -126,8 +125,12 @@ export class UserRepository implements IUserRepository {
   private async loadProfile(
     userId: string,
     roleName: RoleName
-  ): Promise<StudentProfile | TeacherProfile> {
+  ): Promise<StudentProfile | TeacherProfile | undefined> {
     switch (roleName) {
+      case RoleName.ADMIN:
+        // Admin không có profile — intentional, không phải lỗi
+        return undefined;
+ 
       case RoleName.STUDENT: {
         const result = await this.connection.execute<StudentProfileModel>(
           `SELECT USER_ID, MAJOR, AVERAGE_SCORE, COMPLETED_QUIZ_ATTEMPTS
@@ -136,14 +139,16 @@ export class UserRepository implements IUserRepository {
           { userId },
           { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
-
+ 
         const row = result.rows?.[0];
         if (!row) {
-          throw new Error(`UserRepository: StudentProfile không tồn tại cho USER_ID "${userId}".`);
+          throw new Error(
+            `UserRepository: StudentProfile không tồn tại cho USER_ID "${userId}".`
+          );
         }
         return StudentProfileMapper.toDomain(row);
       }
-
+ 
       case RoleName.TEACHER: {
         const result = await this.connection.execute<TeacherProfileModel>(
           `SELECT USER_ID, DEPARTMENT, QUIZZES_CREATED
@@ -152,16 +157,15 @@ export class UserRepository implements IUserRepository {
           { userId },
           { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
-
+ 
         const row = result.rows?.[0];
         if (!row) {
-          throw new Error(`UserRepository: TeacherProfile không tồn tại cho USER_ID "${userId}".`);
+          throw new Error(
+            `UserRepository: TeacherProfile không tồn tại cho USER_ID "${userId}".`
+          );
         }
         return TeacherProfileMapper.toDomain(row);
       }
-
-      default:
-        throw new Error(`UserRepository: Unsupported role "${roleName}"`);
     }
   }
 }

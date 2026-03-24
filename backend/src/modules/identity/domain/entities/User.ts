@@ -1,7 +1,8 @@
-import { FullName } from "../value-objects/Fullname";
+import { FullName } from "../value-objects/FullName";
 import { Password } from "../value-objects/Password";
 import { PermissionType } from "../value-objects/PermissionType";
 import { Role } from "./Role";
+import { RoleName } from "../value-objects/RoleName";
 import { StudentProfile } from "./StudentProfile";
 import { TeacherProfile } from "./TeacherProfile";
 
@@ -10,7 +11,7 @@ export class User {
   readonly email: string;
   readonly fullName: FullName;
   readonly role: Role;
-  readonly profile: StudentProfile | TeacherProfile;
+  readonly profile: StudentProfile | TeacherProfile | undefined;
 
   // passwordHash: luôn là chuỗi đã được bcrypt hash.
   // Dùng Password.fromHash() khi reconstruct từ DB.
@@ -22,7 +23,7 @@ export class User {
     fullName: FullName;
     role: Role;
     passwordHash: Password;
-    profile: StudentProfile | TeacherProfile;
+    profile: StudentProfile | TeacherProfile | undefined;
   }) {
     this.userId = params.userId;
     this.email = params.email;
@@ -53,5 +54,18 @@ export class User {
 
   changePassword(newPasswordHash: Password): void {
     this._passwordHash = newPasswordHash;
+  }
+
+  // Helper để caller không cần biết RoleName
+  isAdmin(): boolean {
+    return this.role.roleName === RoleName.ADMIN;
+  }
+ 
+  isStudent(): boolean {
+    return this.role.roleName === RoleName.STUDENT;
+  }
+ 
+  isTeacher(): boolean {
+    return this.role.roleName === RoleName.TEACHER;
   }
 }

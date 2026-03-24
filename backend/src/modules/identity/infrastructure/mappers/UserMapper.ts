@@ -2,9 +2,8 @@ import { User } from "../../domain/entities/User";
 import { Role } from "../../domain/entities/Role";
 import { StudentProfile } from "../../domain/entities/StudentProfile";
 import { TeacherProfile } from "../../domain/entities/TeacherProfile";
-import { FullName } from "../../domain/value-objects/Fullname";
+import { FullName } from "../../domain/value-objects/FullName";
 import { Password } from "../../domain/value-objects/Password";
-import { RoleName } from "../../domain/value-objects/RoleName";
 import { UserModel } from "../models/UserModel";
 
 //   Mapper KHÔNG tự query DB. Repository thực hiện các query cần
@@ -25,7 +24,7 @@ export class UserMapper {
   static toDomain(
     row: UserModel,
     role: Role,
-    profile: StudentProfile | TeacherProfile
+    profile: StudentProfile | TeacherProfile | undefined
   ): User {
     return new User({
       userId: row.USER_ID,
