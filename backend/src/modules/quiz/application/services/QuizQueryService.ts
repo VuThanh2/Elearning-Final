@@ -1,12 +1,19 @@
 import { IQuizRepository }    from "../../domain/interface-repositories/IQuizRepository";
-import { IQuizQueryService, QuizSnapshot, QuizGradingData } from "../interfaces/IQuizQueryService";
+import {
+  IQuizQueryService,
+  QuizSnapshot,
+  QuizGradingData,
+  QuizStudentViewData,
+  StudentQuestionView,
+  StudentOptionView,
+} from "../interfaces/IQuizQueryService";
 
 // Service nội bộ của Quiz Context — chỉ được export ra ngoài qua index.ts.
-// Module khác (Quiz Attempt Context) chỉ biết IQuizQueryService (interface),
-// không biết class này tồn tại.
+// Module khác (Quiz Attempt Context) chỉ biết IQuizQueryService (interface)
 //
 // Hai methods tương ứng với 2 giai đoạn của attempt lifecycle:
 //   - getQuizSnapshot()    → validate trước khi start attempt
+//   - getQuizQuestionsForStudent() → render bài làm sau khi start
 //   - getQuizGradingData() → chấm điểm khi submit / expire
 
 export class QuizQueryService implements IQuizQueryService {
@@ -40,6 +47,43 @@ export class QuizQueryService implements IQuizQueryService {
     };
   }
 
+  // Render bài làm cho student sau khi start attempt.
+  //
+  // Trả về questions + options với content đầy đủ.
+  // isCorrect bị omit hoàn toàn — anti-corruption layer:
+  // Quiz Context tự lọc trước khi expose ra ngoài.
+  async getQuizQuestionsForStudent(quizId: string): Promise<QuizStudentViewData | null> {
+    const quiz = await this.quizRepository.findById(quizId);
+    if (!quiz) return null;
+ 
+    const questions      = [...quiz.questions];
+    const totalQuestions = questions.length;
+    if (totalQuestions === 0) return null;
+ 
+    const pointsPerQuestion = quiz.maxScore.value / totalQuestions;
+ 
+    const studentQuestions: StudentQuestionView[] = questions.map((q) => {
+      const options: StudentOptionView[] = [...q.answerOptions].map((opt) => ({
+        optionId: opt.optionId,
+        content:  opt.content,
+        // isCorrect bị omit — không leak đáp án đúng trước khi nộp bài
+      }));
+ 
+      return {
+        questionId:   q.questionId,
+        content:      q.content,
+        questionType: q.questionType,
+        options,
+      };
+    });
+ 
+    return {
+      quizId,
+      questions:         studentQuestions,
+      pointsPerQuestion,
+    };
+  }
+
   // Lấy đáp án đúng + điểm mỗi câu để chấm điểm khi student submit/expire.
   //
   // pointsPerQuestion = maxScore / totalQuestions:
@@ -65,6 +109,8 @@ export class QuizQueryService implements IQuizQueryService {
     return {
       quizId:           quiz.quizId,
       maxScore:         quiz.maxScore.value,
+      timeLimitMs:       quiz.timeLimit.minutes * 60_000,
+      deadlineAt:        quiz.deadline.value,
       questions:        questions.map((q) => ({
         questionId:       q.questionId,
         correctOptionIds: [...q.correctOptions].map((opt) => opt.optionId),

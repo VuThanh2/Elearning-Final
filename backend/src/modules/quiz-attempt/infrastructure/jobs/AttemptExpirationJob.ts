@@ -111,6 +111,10 @@ export class AttemptExpirationJob {
             attempt.quizId,
             attempt.studentId,
             attempt.sectionId,
+            attempt.attemptNumber.value,
+            attempt.score.value,
+            attempt.score.maxScore,
+            [],
             now,
           )
         );

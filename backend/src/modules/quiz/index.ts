@@ -19,7 +19,14 @@ import { QuizQueryService } from "./application/services/QuizQueryService";
 //   - QuizRepository, QuizModel (infrastructure internals)
 //   - CreateQuizUseCase, PublishQuizUseCase, ... (application internals)
 
-export type { IQuizQueryService, QuizSnapshot, QuizGradingData } from "./application/interfaces/IQuizQueryService";
+export type {
+  IQuizQueryService,
+  QuizSnapshot,
+  QuizGradingData,
+  QuizStudentViewData,
+  StudentQuestionView,
+  StudentOptionView,
+} from "./application/interfaces/IQuizQueryService";
 // Quiz Context tự wire dependency của mình.
 // Caller chỉ cần gọi factory, không cần biết
 // QuizRepository hay QuizModel bên trong tồn tại.

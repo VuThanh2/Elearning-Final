@@ -1,13 +1,37 @@
-// Phát ra khi system tự đóng attempt do hết thời gian.
-// Analytics có thể dùng để phân biệt completed vs expired.
+// Phát ra khi attempt hết giờ.
+//
+// Có 2 nguồn phát event này:
+//   1. ExpireAttemptUseCase  — frontend detect hết giờ, gửi answers lên server
+//      → student vẫn được điểm cho những câu đã làm
+//   2. AttemptExpirationJob  — fallback khi frontend không gửi được (mất mạng)
+//      → score = 0 vì server không biết student đã chọn gì
+//
+// Analytics Context dùng để:
+//   - Cập nhật StudentQuizResultView (score, duration, attemptNumber)
+//   - Cập nhật QuizPerformanceView (totalAttempts — đếm cả Expired)
+//   - Cập nhật QuestionFailureRateView (answers)
+//   - Phân biệt Expired vs Submitted trong completionRate
+//     (completionRate chỉ tính Submitted, không tính Expired)
+//
+// Identity Context dùng để:
+//   - Cập nhật StudentProfile.completedQuizAttempts (đếm cả Expired)
 export class QuizAttemptExpired {
   readonly occurredAt: Date;
 
   constructor(
-    readonly attemptId: string,
-    readonly quizId: string,
-    readonly studentId: string,
-    readonly sectionId: string,
+    readonly attemptId:    string,
+    readonly quizId:       string,
+    readonly studentId:    string,
+    readonly sectionId:    string,
+    readonly attemptNumber: number,
+    readonly score:        number,
+    readonly maxScore:     number,
+    readonly answers: Array<{
+      questionId:        string;
+      selectedOptionIds: string[];
+      isCorrect:         boolean;
+      earnedPoints:      number;
+    }>,
     occurredAt: Date,
   ) {
     this.occurredAt = occurredAt;

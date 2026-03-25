@@ -25,6 +25,8 @@ export interface QuizSnapshot {
 export interface QuizGradingData {
   quizId: string;
   maxScore: number;
+  timeLimitMs:       number;  // timeLimitMinutes * 60_000
+  deadlineAt:        Date;
   questions: Array<{
     questionId: string;
     correctOptionIds: string[];
@@ -32,12 +34,39 @@ export interface QuizGradingData {
   pointsPerQuestion: number;  // maxScore / totalQuestions
 }
 
+// QuizStudentViewData — dùng khi start attempt (render bài làm)
+//
+// Trả về questions với content + options để student render bài làm.
+// isCorrect và correctOptionIds bị omit hoàn toàn — student chưa được
+// biết đáp án trước khi nộp bài.
+export interface StudentOptionView {
+  optionId: string;
+  content:  string;
+}
+ 
+export interface StudentQuestionView {
+  questionId:   string;
+  content:      string;
+  questionType: string;  // "MultipleChoice"
+  options:      StudentOptionView[];
+}
+ 
+export interface QuizStudentViewData {
+  quizId:            string;
+  questions:         StudentQuestionView[];
+  pointsPerQuestion: number;
+}
+
 export interface IQuizQueryService {
   // Lấy snapshot quiz để validate trước khi start attempt
   // (check status, maxAttempts, deadline, timeLimit)
   getQuizSnapshot(quizId: string): Promise<QuizSnapshot | null>;
 
-  // Lấy grading data để chấm điểm khi submit
+  // Lấy grading data để chấm điểm khi submit / expire
   // (danh sách question + correctOptionIds + pointsPerQuestion)
   getQuizGradingData(quizId: string): Promise<QuizGradingData | null>;
+
+  // Render bài làm cho student sau khi start attempt
+  // Trả về questions + options, KHÔNG có isCorrect/correctOptionIds
+  getQuizQuestionsForStudent(quizId: string): Promise<QuizStudentViewData | null>;
 }
