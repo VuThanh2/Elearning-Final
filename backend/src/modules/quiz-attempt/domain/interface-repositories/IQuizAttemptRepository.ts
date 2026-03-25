@@ -1,7 +1,6 @@
 import { QuizAttempt } from "../entities/QuizAttempt";
 
 // Implementation sẽ dùng MongoDB — 1 attempt = 1 document (nested answers).
-
 export interface IQuizAttemptRepository {
   // Tìm attempt theo attemptId — dùng khi submit hoặc xem kết quả
   findById(attemptId: string): Promise<QuizAttempt | null>;
@@ -13,7 +12,13 @@ export interface IQuizAttemptRepository {
     quizId: string,
   ): Promise<number>;
 
-  // Persist attempt (insert hoặc update)
+  // Persist attempt mới kèm expiresAt — chỉ dùng khi start attempt.
+  // expiresAt = startedAt + timeLimitMs, được tính bởi StartAttemptUseCase.
+  // Không dùng cho submit/expire vì expiresAt lúc đó đã có sẵn trong DB.
+  saveNewAttempt(attempt: QuizAttempt, expiresAt: Date): Promise<void>;
+ 
+  // Persist attempt đã tồn tại (submit hoặc expire).
+  // Implementation tự giữ nguyên expiresAt từ document cũ.
   save(attempt: QuizAttempt): Promise<void>;
 
   // Tìm tất cả attempt đang InProgress đã quá thời gian —

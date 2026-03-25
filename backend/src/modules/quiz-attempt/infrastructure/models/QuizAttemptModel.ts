@@ -99,8 +99,11 @@ QuizAttemptSchema.index({ studentId: 1, quizId: 1 });
 // (quizId, sectionId) — Analytics cần tổng hợp attempts theo quiz/section
 QuizAttemptSchema.index({ quizId: 1, sectionId: 1 });
 
-// (status, startedAt) — Background job tìm attempts InProgress quá giờ
-QuizAttemptSchema.index({ status: 1, startedAt: 1 });
+// (status, expiresAt) — AttemptExpirationJob scan attempt InProgress đã quá giờ:
+//   findExpiredCandidates() query: { status: InProgress, expiresAt: { $lte: now } }
+//   Index này cho phép MongoDB dùng prefix "status = InProgress" để filter
+//   trước, sau đó range scan trên expiresAt để tìm attempt quá giờ.
+QuizAttemptSchema.index({ status: 1, expiresAt: 1 });
 
 // Model export 
 export const QuizAttemptModel: Model<IQuizAttemptDocument> = mongoose.model<IQuizAttemptDocument>(
