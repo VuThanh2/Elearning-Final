@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { ITokenProvider, TokenPayload } from "../../modules/identity/application/interfaces/ITokenProvider";
+import { ITokenProvider, TokenPayload } from "../../modules/identity";
 
 // Chặn mọi request không có JWT hợp lệ.
 // Chạy TRƯỚC requireRole trên các protected route.

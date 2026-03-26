@@ -24,7 +24,6 @@ import { requireAuthentication } from "../../../../shared/middlewares/requireAut
 //   POST /auth/login          — public
 //   POST /auth/logout         — protected (requireAuthentication)
 //   POST /auth/reset-password — public
-
 export function createAuthRouter(
   oracleConnection: oracledb.Connection,
   redisClient: RedisClientType

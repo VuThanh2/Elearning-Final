@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { AuthorizationUseCase } from "../../modules/identity/application/use-cases/AuthorizationUseCase";
-import { PermissionType } from "../../modules/identity/domain/value-objects/PermissionType";
+import { AuthorizationUseCase, PermissionType } from "../../modules/identity";
 
 // Kiểm tra user có permission cần thiết để truy cập route không.
 // Phải chạy SAU requireAuthentication (cần req.user đã được set).
@@ -12,7 +11,6 @@ import { PermissionType } from "../../modules/identity/domain/value-objects/Perm
 // Error mapping:
 //   Unauthorized  → 401 (userId không còn tồn tại trong DB)
 //   AccessDenied  → 403
-
 export function requireRole(
   authorizationUseCase: AuthorizationUseCase,
   requiredPermission: PermissionType

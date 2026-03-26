@@ -3,7 +3,6 @@ import { QuizRepository }  from "./infrastructure/repositories/QuizRepository";
 import { QuizQueryService } from "./application/services/QuizQueryService";
 
 // Entry point của Quiz Context.
-//
 //   - Module khác CHỈ được import từ file này
 //   - Không được import thẳng vào bất kỳ file nào khác
 //     bên trong quiz/ (ví dụ: quiz/infrastructure/..., quiz/domain/...)

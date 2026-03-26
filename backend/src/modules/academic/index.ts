@@ -12,7 +12,6 @@ import { AcademicQueryService } from "./application/services/AcademicQueryServic
 // Những gì được export ra ngoài:
 //   - IAcademicQueryService  → interface để dùng trong Use Case (type-safe)
 //   - createAcademicQueryService() → factory để wire dependency
-
 export type { IAcademicQueryService } from "./application/interfaces/IAcademicQueryService";
 
 // Academic Context tự wire dependency của mình.

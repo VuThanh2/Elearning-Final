@@ -1,5 +1,5 @@
 import oracledb from "oracledb";
-import { IAcademicRepository } from "../../domain/interface-repositories/IAcademicRepository";
+import { IAcademicRepository, SectionWithContextRow } from "../../domain/interface-repositories/IAcademicRepository";
 import { AcademicUnit }        from "../../domain/entities/AcademicUnit";
 import { TeachingAssignment }  from "../../domain/read-models/TeachingAssignment";
 import { Enrollment }          from "../../domain/read-models/Enrollment";
@@ -7,10 +7,12 @@ import { Enrollment }          from "../../domain/read-models/Enrollment";
 import { AcademicUnitModel }        from "../models/AcademicUnitModel";
 import { TeachingAssignmentModel }  from "../models/TeachingAssignmentModel";
 import { EnrollmentModel }          from "../models/EnrollmentModel";
+import { SectionWithContextModel } from "../models/SectionWithContextModel";
  
 import { AcademicUnitMapper }       from "../mappers/AcademicUnitMapper";
 import { TeachingAssignmentMapper } from "../mappers/TeachingAssignmentMapper";
 import { EnrollmentMapper }         from "../mappers/EnrollmentMapper";
+import { SectionWithContextMapper } from "../mappers/SectionWithContextMapper";
 
 // Chỉ file này trong toàn bộ codebase được phép query
 // vào các bảng ACADEMIC_UNITS, TEACHING_ASSIGNMENTS, ENROLLMENTS.
@@ -19,20 +21,6 @@ import { EnrollmentMapper }         from "../mappers/EnrollmentMapper";
 //   - Connection được tạo 1 lần ở server bootstrap, truyền vào qua factory
 //   - Không tạo connection mới mỗi request → tránh connection leak
 //   - Dễ mock khi unit test
-//
-// Hai nhóm method:
-//
-//   1. Scalar (boolean) queries — Guard checks cho Use Cases ở module khác
-//      Chỉ cần COUNT(*), không reconstruct object → tối ưu nhất có thể
-//      - sectionExists()
-//      - isTeacherAssignedToSection()
-//      - isStudentEnrolledInSection()
-//
-//   2. Object queries — Trả về domain object khi cần data đầy đủ
-//      Dùng Mapper để convert row → domain object
-//      - findUnitById()
-//      - findSectionsByTeacher()
-//      - findSectionsByStudent()
 export class AcademicRepository implements IAcademicRepository {
   constructor(private readonly connection: oracledb.Connection) {}
 
@@ -184,6 +172,78 @@ export class AcademicRepository implements IAcademicRepository {
     } catch (err) {
       throw new Error(
         `AcademicRepository.findSectionsByStudent: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+
+  // Dùng bởi: GetSectionsByTeacherQuery → Teacher dashboard
+  async findSectionsByTeacherWithContext(
+    teacherId: string,
+  ): Promise<SectionWithContextRow[]> {
+    try {
+      const result = await this.connection.execute<SectionWithContextModel>(
+        `SELECT ta.TERM,
+                ta.ACADEMIC_YEAR,
+                s.UNIT_ID   AS SECTION_ID,
+                s.UNIT_NAME AS SECTION_NAME,
+                s.UNIT_CODE AS SECTION_CODE,
+                c.UNIT_ID   AS COURSE_ID,
+                c.UNIT_NAME AS COURSE_NAME,
+                c.UNIT_CODE AS COURSE_CODE,
+                f.UNIT_ID   AS FACULTY_ID,
+                f.UNIT_NAME AS FACULTY_NAME,
+                f.UNIT_CODE AS FACULTY_CODE
+         FROM   TEACHING_ASSIGNMENTS ta
+         JOIN   ACADEMIC_UNITS s ON s.UNIT_ID = ta.SECTION_ID AND s.TYPE = 'SECTION'
+         JOIN   ACADEMIC_UNITS c ON c.UNIT_ID = s.PARENT_ID   AND c.TYPE = 'COURSE'
+         JOIN   ACADEMIC_UNITS f ON f.UNIT_ID = c.PARENT_ID   AND f.TYPE = 'FACULTY'
+         WHERE  ta.TEACHER_ID = :teacherId
+         ORDER BY ta.ACADEMIC_YEAR DESC, ta.TERM ASC`,
+        { teacherId },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT },
+      );
+      return SectionWithContextMapper.toDomainList(result.rows ?? []);
+    } catch (err) {
+      throw new Error(
+        `AcademicRepository.findSectionsByTeacherWithContext: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+ 
+  // Dùng bởi: GetSectionsByStudentQuery → Student dashboard
+  async findSectionsByStudentWithContext(
+    studentId: string,
+  ): Promise<SectionWithContextRow[]> {
+    try {
+      const result = await this.connection.execute<SectionWithContextModel>(
+        `SELECT e.TERM,
+                e.ACADEMIC_YEAR,
+                s.UNIT_ID   AS SECTION_ID,
+                s.UNIT_NAME AS SECTION_NAME,
+                s.UNIT_CODE AS SECTION_CODE,
+                c.UNIT_ID   AS COURSE_ID,
+                c.UNIT_NAME AS COURSE_NAME,
+                c.UNIT_CODE AS COURSE_CODE,
+                f.UNIT_ID   AS FACULTY_ID,
+                f.UNIT_NAME AS FACULTY_NAME,
+                f.UNIT_CODE AS FACULTY_CODE
+         FROM   ENROLLMENTS e
+         JOIN   ACADEMIC_UNITS s ON s.UNIT_ID = e.SECTION_ID  AND s.TYPE = 'SECTION'
+         JOIN   ACADEMIC_UNITS c ON c.UNIT_ID = s.PARENT_ID   AND c.TYPE = 'COURSE'
+         JOIN   ACADEMIC_UNITS f ON f.UNIT_ID = c.PARENT_ID   AND f.TYPE = 'FACULTY'
+         WHERE  e.STUDENT_ID = :studentId
+         ORDER BY e.ACADEMIC_YEAR DESC, e.TERM ASC`,
+        { studentId },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT },
+      );
+      return SectionWithContextMapper.toDomainList(result.rows ?? []);
+    } catch (err) {
+      throw new Error(
+        `AcademicRepository.findSectionsByStudentWithContext: ${
           err instanceof Error ? err.message : String(err)
         }`,
       );
