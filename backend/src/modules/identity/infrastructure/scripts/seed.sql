@@ -1,4 +1,6 @@
 -- Chạy sau init.sql bằng SQL client (SQL Developer / SQLPlus / DBeaver)
+-- Sau khi chạy file này: academic/init.sql → academic/seed.sql
+-- (TEACHING_ASSIGNMENTS và ENROLLMENTS có FK → USERS nên phải chạy file này trước)
 
 --   Phần 1 — Static data: Roles, Permissions, RolePermissions
 --   Phần 2 — Sample accounts: 1 Admin, 3 Teacher, 4 Student
