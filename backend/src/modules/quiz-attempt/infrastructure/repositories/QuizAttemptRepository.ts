@@ -42,29 +42,30 @@ export class QuizAttemptRepository implements IQuizAttemptRepository {
       .exec();
   }
 
-  // expiresAt: Use Case tính khi start attempt (startedAt + timeLimitMs),
-  // sau đó giữ nguyên qua submit/expire vì giá trị không thay đổi.
+  // dùng $set, không query DB lần 2
+  //
+  // Chỉ update đúng những field thay đổi khi save:
+  //   status, submittedAt, score, answers
+  // expiresAt, startedAt, studentId, quizId, sectionId... không bị đụng.
+  //
+  // matchedCount === 0 nghĩa là caller dùng sai flow —
+  // attempt phải được saveNewAttempt() trước. Throw để lộ bug sớm.
   async save(attempt: QuizAttempt): Promise<void> {
-    // Nếu attempt mới (chưa có trong DB), expiresAt phải được set bởi caller
-    // thông qua saveWithExpiry(). Nếu attempt đã tồn tại (submit/expire),
-    // đọc expiresAt từ document cũ để giữ nguyên.
-    const existing = await this.attemptModel
-      .findById(attempt.attemptId)
-      .select("expiresAt")
-      .lean<{ expiresAt: Date }>()
-      .exec();
+    const update = QuizAttemptMapper.toFinalizedUpdate(attempt);
 
-    const expiresAt = existing?.expiresAt ?? new Date(0);
-
-    const doc = QuizAttemptMapper.toPersistence(attempt, expiresAt);
-
-    await this.attemptModel
-      .replaceOne(
+    const result = await this.attemptModel
+      .updateOne(
         { _id: attempt.attemptId },
-        doc,
-        { upsert: true },
+        { $set: update },
       )
       .exec();
+
+    if (result.matchedCount === 0) {
+      throw new Error(
+        `RepositoryError: Attempt "${attempt.attemptId}" không tồn tại. ` +
+        `Dùng saveNewAttempt() khi tạo attempt mới.`
+      );
+    }
   }
 
   // Save attempt mới với expiresAt — chỉ dùng khi start attempt.

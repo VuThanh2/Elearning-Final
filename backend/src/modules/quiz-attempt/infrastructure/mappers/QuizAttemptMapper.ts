@@ -59,6 +59,21 @@ export class QuizAttemptMapper {
     } as IQuizAttemptDocument;
   }
 
+  // "Data cần $set khi một attempt kết thúc (submit hoặc expire)"
+  static toFinalizedUpdate(attempt: QuizAttempt): {
+    status:      AttemptStatus;
+    submittedAt: Date | null;
+    score:       number;
+    answers:     IStudentAnswerDocument[];
+  } {
+    return {
+      status:      attempt.status,
+      submittedAt: attempt.submittedAt,
+      score:       attempt.score.value,
+      answers:     [...attempt.answers].map(QuizAttemptMapper.answerToPersistence),
+    };
+  }
+
   // Private helpers 
   private static answerToDomain(doc: IStudentAnswerDocument): StudentAnswer {
     return new StudentAnswer({
