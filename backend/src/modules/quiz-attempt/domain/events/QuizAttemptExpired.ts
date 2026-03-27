@@ -19,18 +19,25 @@ export class QuizAttemptExpired {
   readonly occurredAt: Date;
 
   constructor(
-    readonly attemptId:    string,
-    readonly quizId:       string,
-    readonly studentId:    string,
-    readonly sectionId:    string,
+    readonly attemptId:     string,
+    readonly quizId:        string,
+    readonly studentId:     string,
+    readonly sectionId:     string,
     readonly attemptNumber: number,
-    readonly score:        number,
-    readonly maxScore:     number,
-    readonly answers: Array<{
-      questionId:        string;
-      selectedOptionIds: string[];
-      isCorrect:         boolean;
-      earnedPoints:      number;
+    readonly score:    number,
+    readonly maxScore: number,
+    readonly quizTitle: string,
+    readonly startedAt: Date,
+    readonly pointsPerQuestion: number,
+    readonly answers: ReadonlyArray<{
+      readonly questionId:             string;
+      readonly questionContent:        string;
+      readonly selectedOptionIds:      ReadonlyArray<string>;
+      readonly selectedOptionContents: ReadonlyArray<string>;
+      readonly correctOptionIds:       ReadonlyArray<string>;
+      readonly correctOptionContents:  ReadonlyArray<string>;
+      readonly isCorrect:   boolean;
+      readonly earnedPoints: number;
     }>,
     occurredAt: Date,
   ) {

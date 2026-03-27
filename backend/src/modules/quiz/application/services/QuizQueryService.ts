@@ -44,6 +44,7 @@ export class QuizQueryService implements IQuizQueryService {
       timeLimitMinutes: quiz.timeLimit.minutes,
       deadlineAt:       quiz.deadline.value,         // Date object
       totalQuestions:   quiz.questions.length,
+      quizTitle:        quiz.title,
     };
   }
 

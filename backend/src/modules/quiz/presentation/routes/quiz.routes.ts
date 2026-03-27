@@ -18,9 +18,9 @@ import { UpdateQuizUseCase }         from "../../application/use-cases/UpdateQui
 import { UpdateDeadlineUseCase }     from "../../application/use-cases/UpdateDeadlineUseCase";
 import { PublishQuizUseCase }        from "../../application/use-cases/PublishQuizUseCase";
 import { HideQuizUseCase }           from "../../application/use-cases/HideQuizUseCase";
-import { GetQuizUseCase, GetQuizListUseCase } from "../../application/use-cases/QuizQueryUseCase";
-import { AddQuestionUseCase, RemoveQuestionUseCase, UpdateQuestionUseCase } from "../../application/use-cases/QuestionUseCase";
-import { AddAnswerOptionUseCase, RemoveAnswerOptionUseCase, UpdateAnswerOptionUseCase } from "../../application/use-cases/AnswerOptionUseCase";
+import { GetQuizUseCase, GetQuizListUseCase } from "../../application/use-cases/GetQuizUseCase";
+import { AddQuestionUseCase, RemoveQuestionUseCase, UpdateQuestionUseCase } from "../../application/use-cases/AddQuestionUseCase";
+import { AddAnswerOptionUseCase, RemoveAnswerOptionUseCase, UpdateAnswerOptionUseCase } from "../../application/use-cases/AddAnswerOptionUseCase";
 
 // Presentation
 import { QuizController }            from "../../presentation/controllers/QuizController";

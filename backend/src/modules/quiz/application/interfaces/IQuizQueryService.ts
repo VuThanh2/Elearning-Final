@@ -19,6 +19,7 @@ export interface QuizSnapshot {
   timeLimitMinutes: number;
   deadlineAt: Date;
   totalQuestions: number;
+  quizTitle: string;
 }
 
 // Data cần để chấm điểm khi submit

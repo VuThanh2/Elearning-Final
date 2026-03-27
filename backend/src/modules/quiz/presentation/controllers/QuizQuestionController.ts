@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { AddQuestionUseCase, RemoveQuestionUseCase, UpdateQuestionUseCase } from "../../application/use-cases/QuestionUseCase";
-import { AddAnswerOptionUseCase, RemoveAnswerOptionUseCase, UpdateAnswerOptionUseCase } from "../../application/use-cases/AnswerOptionUseCase";
+import { AddQuestionUseCase, RemoveQuestionUseCase, UpdateQuestionUseCase } from "../../application/use-cases/AddQuestionUseCase";
+import { AddAnswerOptionUseCase, RemoveAnswerOptionUseCase, UpdateAnswerOptionUseCase } from "../../application/use-cases/AddAnswerOptionUseCase";
 import { AddQuestionDTO }    from "../../application/dtos/AddQuestionDTO";
 import { UpdateQuestionDTO } from "../../application/dtos/UpdateQuestionDTO";
 import { AnswerOptionDTO }   from "../../application/dtos/AnswerOptionDTO";

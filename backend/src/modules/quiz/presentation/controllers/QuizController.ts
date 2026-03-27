@@ -4,7 +4,7 @@ import { UpdateQuizUseCase }     from "../../application/use-cases/UpdateQuizUse
 import { UpdateDeadlineUseCase } from "../../application/use-cases/UpdateDeadlineUseCase";
 import { PublishQuizUseCase }    from "../../application/use-cases/PublishQuizUseCase";
 import { HideQuizUseCase }       from "../../application/use-cases/HideQuizUseCase";
-import { GetQuizUseCase, GetQuizListUseCase } from "../../application/use-cases/QuizQueryUseCase";
+import { GetQuizUseCase, GetQuizListUseCase } from "../../application/use-cases/GetQuizUseCase";
 import { CreateQuizDTO }     from "../../application/dtos/CreateQuizDTO";
 import { UpdateQuizDTO }     from "../../application/dtos/UpdateQuizDTO";
 import { UpdateDeadlineDTO } from "../../application/dtos/UpdateDeadlineDTO";
