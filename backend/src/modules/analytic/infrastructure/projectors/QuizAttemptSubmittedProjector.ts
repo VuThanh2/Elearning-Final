@@ -1,10 +1,9 @@
 import oracledb from "oracledb";
 
-import { QuizAttemptSubmitted } from "../../../quiz-attempt/domain/events/QuizAttemptSubmitted";
-import { QuizAttemptExpired }   from "../../../quiz-attempt/domain/events/QuizAttemptExpired";
+import { QuizAttemptSubmitted, QuizAttemptExpired } from "../../../quiz-attempt";
 
 import { StudentQuizAnswerModel } from "../database/nosql/models/StudentQuizAnswerModel";
-import { QuestionFailureRateModel, IQuestionFailureRateDocument } from "../database/nosql/models/QuestionFailureRateModel";
+import { QuestionFailureRateModel, IQuestionFailureRateDocument, IQuestionFailureStatDocument } from "../database/nosql/models/QuestionFailureRateModel";
 
 // Xử lý QuizAttemptSubmitted / QuizAttemptExpired
 //
@@ -498,8 +497,8 @@ export class QuizAttemptSubmittedProjector {
 
     if (existing?.processedAttemptIds?.includes(e.attemptId)) return;
 
-    const questionMap = new Map<string, any>(
-      (existing?.questions ?? []).map((q: any) => [
+    const questionMap = new Map<string, IQuestionFailureStatDocument>(
+      (existing?.questions ?? []).map((q) => [
         q.questionId,
         { ...q, wrongOptionCounts: { ...(q.wrongOptionCounts ?? {}) } },
       ])

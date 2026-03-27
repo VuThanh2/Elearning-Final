@@ -20,6 +20,7 @@ export interface IQuestionFailureStatDocument {
   wrongAnswers:                    number;
   unansweredCount:                 number; // số lần bỏ trống (selectedOptionIds rỗng)
   failureRate:                     number; // wrongAnswers / totalQuestionAttempts, 0–1
+  wrongOptionCounts: Record<string, number>;
   mostSelectedWrongOptionId:       string | null;
   mostSelectedWrongOptionContent:  string | null;
 }
@@ -51,6 +52,10 @@ const QuestionFailureStatSchema = new Schema<IQuestionFailureStatDocument>(
     wrongAnswers:                   { type: Number,  default: 0, min: 0 },
     unansweredCount:                { type: Number,  default: 0, min: 0 },
     failureRate:                    { type: Number,  default: 0, min: 0, max: 1 },
+    wrongOptionCounts: {
+      type:    Schema.Types.Mixed,
+      default: {},
+    },
     mostSelectedWrongOptionId:      { type: String,  default: null },
     mostSelectedWrongOptionContent: { type: String,  default: null },
   },
