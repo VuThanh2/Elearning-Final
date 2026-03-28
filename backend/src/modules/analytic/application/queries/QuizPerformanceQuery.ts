@@ -1,5 +1,6 @@
 import { IOracleAnalyticsRepository } from "../../domain/interface-repositories/IOracleAnalyticsRepository";
 import { IAcademicQueryService }      from "../../../academic";
+import { IAnalyticCache, AnalyticCacheKey, AnalyticsCacheTTL } from "../../domain/interface-repositories/IAnalyticCache";
 import { QuizPerformanceView }        from "../../domain/read-models/QuizPerformanceView";
 import { QuizPerformanceDTO }         from "../dtos/QuizPerformanceDTO";
 
@@ -13,6 +14,7 @@ export class QuizPerformanceQuery {
   constructor(
     private readonly oracleRepo:      IOracleAnalyticsRepository,
     private readonly academicService: IAcademicQueryService,
+    private readonly cache:           IAnalyticCache, 
   ) {}
 
   // GET /analytics/sections/:sectionId/quizzes/:quizId/performance
@@ -24,9 +26,15 @@ export class QuizPerformanceQuery {
     sectionId: string,
   ): Promise<QuizPerformanceDTO | null> {
     await this.assertTeacherAssigned(teacherId, sectionId);
-
+ 
+    const key    = AnalyticCacheKey.quizPerformance(quizId, sectionId);
+    const cached = await this.cache.get<QuizPerformanceDTO>(key);
+    if (cached) return cached;
+ 
     const view = await this.oracleRepo.findQuizPerformance(quizId, sectionId);
-    return view ? this.toDTO(view) : null;
+    const dto  = view ? this.toDTO(view) : null;
+    if (dto) await this.cache.set(key, dto, AnalyticsCacheTTL.NORMAL);
+    return dto;
   }
 
   // GET /analytics/sections/:sectionId/performance
@@ -37,9 +45,15 @@ export class QuizPerformanceQuery {
     sectionId: string,
   ): Promise<QuizPerformanceDTO[]> {
     await this.assertTeacherAssigned(teacherId, sectionId);
-
+ 
+    const key    = AnalyticCacheKey.sectionPerformance(sectionId);
+    const cached = await this.cache.get<QuizPerformanceDTO[]>(key);
+    if (cached) return cached;
+ 
     const views = await this.oracleRepo.findQuizPerformanceBySection(sectionId);
-    return views.map((view) => this.toDTO(view));
+    const dtos  = views.map((view) => this.toDTO(view));
+    await this.cache.set(key, dtos, AnalyticsCacheTTL.NORMAL);
+    return dtos;
   }
 
   // private helpers 

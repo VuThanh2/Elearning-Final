@@ -1,33 +1,40 @@
 import { IMongoAnalyticsRepository }                       from "../../domain/interface-repositories/IMongoAnalyticsRepository";
 import { StudentQuizAnswerView, StudentAnswerDetail }      from "../../domain/read-models/StudentQuizAnswerView";
-import { StudentQuizAnswerReviewDTO, AnswerReviewItemDTO } from "../dtos/StudentQuizAnswerDTO";
+import { StudentQuizAnswerDTO, AnswerItemDTO } from "../dtos/StudentQuizAnswerDTO";
+import { IAnalyticCache, AnalyticCacheKey, AnalyticsCacheTTL } from "../../domain/interface-repositories/IAnalyticCache";
 
 // Actor:   Student
 // Permission: VIEW_OWN_RESULT
 export class StudentQuizAnswerQuery {
   constructor(
     private readonly mongoRepo: IMongoAnalyticsRepository,
+    private readonly cache:     IAnalyticCache,
   ) {}
 
   // GET /analytics/attempts/:attemptId/answer-review
-  // → StudentQuizAnswerReviewDTO | null
+  // → StudentQuizAnswerDTO | null
   // null = projection chưa populate (eventually consistent).
   async byAttempt(
     studentId: string,
     attemptId: string,
-  ): Promise<StudentQuizAnswerReviewDTO | null> {
+  ): Promise<StudentQuizAnswerDTO | null> {
+    const key    = AnalyticCacheKey.answerReview(attemptId);
+    const cached = await this.cache.get<StudentQuizAnswerDTO>(key);
+    if (cached) return cached;
+ 
+    // Cache MISS: fetch từ MongoDB → ownership check đầy đủ
     const view = await this.mongoRepo.findAnswerViewByAttempt(attemptId);
     if (!view) return null;
-
-    // Ownership check: query theo attemptId — bất kỳ ai cũng có thể đoán.
-    // studentId trong document phải khớp với actor từ JWT.
+ 
     if (view.studentId !== studentId) {
       throw new Error(
         `AccessDeniedError: Bạn không có quyền xem review của attempt "${attemptId}".`,
       );
     }
-
-    return this.toDTO(view);
+ 
+    const dto = this.toDTO(view);
+    await this.cache.set(key, dto, AnalyticsCacheTTL.IMMUTABLE);
+    return dto;
   }
 
   // GET /analytics/quizzes/:quizId/my-answer-history
@@ -35,15 +42,21 @@ export class StudentQuizAnswerQuery {
   async byQuiz(
     studentId: string,
     quizId:    string,
-  ): Promise<StudentQuizAnswerReviewDTO[]> {
-    // Compound query (studentId, quizId) đảm bảo ownership — không cần check thêm.
+  ): Promise<StudentQuizAnswerDTO[]> {
+    const key    = AnalyticCacheKey.answerHistoryByQuiz(studentId, quizId);
+    const cached = await this.cache.get<StudentQuizAnswerDTO[]>(key);
+    if (cached) return cached;
+ 
+    // Compound query (studentId, quizId) đảm bảo ownership — không cần check thêm
     const views = await this.mongoRepo.findAnswerViewsByStudentAndQuiz(studentId, quizId);
-    return views.map((view) => this.toDTO(view));
+    const dtos  = views.map((view) => this.toDTO(view));
+    await this.cache.set(key, dtos, AnalyticsCacheTTL.NORMAL);
+    return dtos;
   }
 
   // private helpers 
-  // StudentQuizAnswerView (domain) → StudentQuizAnswerReviewDTO (application)
-  private toDTO(view: StudentQuizAnswerView): StudentQuizAnswerReviewDTO {
+  // StudentQuizAnswerView (domain) → StudentQuizAnswerDTO (application)
+  private toDTO(view: StudentQuizAnswerView): StudentQuizAnswerDTO {
     return {
       attemptId:     view.attemptId,
       quizId:        view.quizId,
@@ -58,7 +71,7 @@ export class StudentQuizAnswerQuery {
     };
   }
 
-  private toAnswerItemDTO(a: StudentAnswerDetail): AnswerReviewItemDTO {
+  private toAnswerItemDTO(a: StudentAnswerDetail): AnswerItemDTO {
     return {
       questionId:             a.questionId,
       questionContent:        a.questionContent,

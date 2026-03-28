@@ -1,10 +1,14 @@
 import { EventEmitter } from "events";
 import oracledb         from "oracledb";
+import { RedisClientType } from "redis";
 
 import { QuizAttemptSubmitted, QuizAttemptExpired } from "../../../quiz-attempt";
 import { QuizAttemptSubmittedProjector } from "../projectors/QuizAttemptSubmittedProjector";
 import { StudentQuizAnswerModel } from "../database/nosql/models/StudentQuizAnswerModel";
 import { QuestionFailureRateModel } from "../database/nosql/models/QuestionFailureRateModel";
+
+import { IAnalyticCache }    from "../../domain/interface-repositories/IAnalyticCache";
+import { RedisAnalyticCache } from "./RedisAnalyticCache";
 
 // Provider đăng ký lắng nghe events cho Analytics Context
 // Trách nhiệm duy nhất: wire listeners vào EventEmitter khi bootstrap.
@@ -24,11 +28,14 @@ import { QuestionFailureRateModel } from "../database/nosql/models/QuestionFailu
 export function createAnalyticsEventSubscriber(
   eventEmitter:     EventEmitter,
   oracleConnection: oracledb.Connection,
+  redisClient:      RedisClientType,
 ): AnalyticsEventSubscriber {
+  const cache: IAnalyticCache = new RedisAnalyticCache(redisClient);
   const projector = new QuizAttemptSubmittedProjector(
     oracleConnection,
     StudentQuizAnswerModel,
     QuestionFailureRateModel,
+    cache,
     // Không cần IAcademicQueryService — Projector dùng SQL JOIN
   );
   return new AnalyticsEventSubscriber(eventEmitter, projector);

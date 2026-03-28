@@ -1,12 +1,14 @@
 import { IOracleAnalyticsRepository } from "../../domain/interface-repositories/IOracleAnalyticsRepository";
 import { StudentClassRankingView }    from "../../domain/read-models/StudentClassRankingView";
 import { StudentClassRankingDTO }     from "../dtos/StudentClassRankingDTO";
+import { IAnalyticCache, AnalyticCacheKey, AnalyticsCacheTTL } from "../../domain/interface-repositories/IAnalyticCache";
 
 // Actor:   Student
 // Permission: VIEW_CLASS_RANKING
 export class StudentClassRankingQuery {
   constructor(
     private readonly oracleRepo: IOracleAnalyticsRepository,
+    private readonly cache:      IAnalyticCache,
   ) {}
 
   // GET /analytics/sections/:sectionId/my-ranking
@@ -15,8 +17,14 @@ export class StudentClassRankingQuery {
     studentId: string,
     sectionId: string,
   ): Promise<StudentClassRankingDTO | null> {
+    const key    = AnalyticCacheKey.studentRanking(studentId, sectionId);
+    const cached = await this.cache.get<StudentClassRankingDTO>(key);
+    if (cached) return cached;
+ 
     const view = await this.oracleRepo.findStudentRanking(studentId, sectionId);
-    return view ? this.toDTO(view) : null;
+    const dto  = view ? this.toDTO(view) : null;
+    if (dto) await this.cache.set(key, dto, AnalyticsCacheTTL.HEAVY);
+    return dto;
   }
 
   // private helpers 

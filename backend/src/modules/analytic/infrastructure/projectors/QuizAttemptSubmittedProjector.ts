@@ -5,6 +5,7 @@ import { QuizAttemptSubmitted, QuizAttemptExpired } from "../../../quiz-attempt"
 import { StudentQuizAnswerModel } from "../database/nosql/models/StudentQuizAnswerModel";
 import { QuestionFailureRateModel, IQuestionFailureRateDocument, IQuestionFailureStatDocument } from "../database/nosql/models/QuestionFailureRateModel";
 
+import { IAnalyticCache, AnalyticCacheKey } from "../../domain/interface-repositories/IAnalyticCache";
 // Xử lý QuizAttemptSubmitted / QuizAttemptExpired
 //
 // Nhận event đã được enrich từ Use Case → ghi trực tiếp vào Oracle + MongoDB.
@@ -12,12 +13,6 @@ import { QuestionFailureRateModel, IQuestionFailureRateDocument, IQuestionFailur
 // Event chỉ chứa sectionId, studentId — không chứa hierarchy labels.
 // Projector resolve bằng JOIN trực tiếp vào ACADEMIC_UNITS và USERS
 // trong cùng Oracle instance, ngay trong câu MERGE INTO SQL.
-//
-// IDEMPOTENCY
-//
-// Oracle MERGE INTO — idempotent tự nhiên.
-// MongoDB replaceOne + upsert — idempotent tự nhiên.
-// QuestionFailureRateView dùng processedAttemptIds để tránh double-count.
 type AttemptFinalizedEvent = QuizAttemptSubmitted | QuizAttemptExpired;
 
 export class QuizAttemptSubmittedProjector {
@@ -25,6 +20,7 @@ export class QuizAttemptSubmittedProjector {
     private readonly oracleConnection:         oracledb.Connection,
     private readonly studentQuizAnswerModel:   typeof StudentQuizAnswerModel,
     private readonly questionFailureRateModel: typeof QuestionFailureRateModel,
+    private readonly cache:                    IAnalyticCache,
   ) {}
 
   async handle(event: AttemptFinalizedEvent, status: "SUBMITTED" | "EXPIRED"): Promise<void> {
@@ -33,6 +29,37 @@ export class QuizAttemptSubmittedProjector {
       this.writeStudentQuizAnswer(event, status),
       this.writeQuestionFailureRate(event),
     ]);
+
+    await this.invalidateCacheAfterWrite(event);
+  }
+
+  // Cache Invalidation
+  private async invalidateCacheAfterWrite(event: AttemptFinalizedEvent): Promise<void> {
+    try {
+      // Exact key invalidation — 1 DEL command với nhiều key
+      await this.cache.invalidate([
+        AnalyticCacheKey.quizPerformance(event.quizId, event.sectionId),
+        AnalyticCacheKey.sectionPerformance(event.sectionId),
+        AnalyticCacheKey.studentResultsBySection(event.studentId, event.sectionId),
+        AnalyticCacheKey.studentResultsByQuiz(event.studentId, event.quizId),
+        AnalyticCacheKey.answerHistoryByQuiz(event.studentId, event.quizId),
+        AnalyticCacheKey.questionFailureRate(event.quizId, event.sectionId),
+        AnalyticCacheKey.atRiskStudents(event.sectionId),
+        AnalyticCacheKey.studentRanking(event.studentId, event.sectionId),
+        AnalyticCacheKey.sectionRanking(event.sectionId),
+        AnalyticCacheKey.scoreDistribution(event.quizId, event.sectionId),
+      ]);
+ 
+      // Pattern invalidation cho HierarchicalReport (nhiều permutation)
+      await this.cache.invalidatePattern(AnalyticCacheKey.HIER_PATTERN);
+    } catch (err) {
+      // Log nhưng KHÔNG throw — cache invalidation failure không
+      // được rollback DB write đã thành công.
+      console.warn(
+        `[Analytics] Cache invalidation failed for attemptId="${event.attemptId}":`,
+        err instanceof Error ? err.message : err,
+      );
+    }
   }
 
   // Oracle writes (1 transaction) 

@@ -2,6 +2,7 @@ import { IOracleAnalyticsRepository }                     from "../../domain/int
 import { IAcademicQueryService }                          from "../../../academic";
 import { AtRiskStudentView }                              from "../../domain/read-models/AtRiskStudentView";
 import { AtRiskStudentDTO, AtRiskSectionReportDTO, RiskLevel } from "../dtos/AtRiskStudentDTO";
+import { IAnalyticCache, AnalyticCacheKey, AnalyticsCacheTTL } from "../../domain/interface-repositories/IAnalyticCache";
 
 // Actor:   Teacher
 // Permission: VIEW_AT_RISK_STUDENTS
@@ -9,6 +10,7 @@ export class AtRiskStudentQuery {
   constructor(
     private readonly oracleRepo:      IOracleAnalyticsRepository,
     private readonly academicService: IAcademicQueryService,
+    private readonly cache:      IAnalyticCache,
   ) {}
 
   // GET /analytics/sections/:sectionId/at-risk
@@ -21,17 +23,25 @@ export class AtRiskStudentQuery {
     if (!ok) throw new Error(
       `AccessDeniedError: Teacher không được phép xem at-risk report của section "${sectionId}".`,
     );
-
-    const views = await this.oracleRepo.findAtRiskStudentsBySection(sectionId);
+ 
+    const key    = AnalyticCacheKey.atRiskStudents(sectionId);
+    const cached = await this.cache.get<AtRiskSectionReportDTO>(key);
+    if (cached) return cached;
+ 
+    const views    = await this.oracleRepo.findAtRiskStudentsBySection(sectionId);
     const students = views.map((view) => this.toDTO(view));
-
-    return {
+ 
+    // Giữ nguyên hoàn toàn cách build response từ file gốc
+    const dto: AtRiskSectionReportDTO = {
       sectionId,
       sectionName:    views[0]?.sectionName ?? sectionId,
       totalStudents:  students.length,
       rankedStudents: students.length,
       students,
     };
+ 
+    await this.cache.set(key, dto, AnalyticsCacheTTL.HEAVY);
+    return dto;
   }
 
   // private helpers

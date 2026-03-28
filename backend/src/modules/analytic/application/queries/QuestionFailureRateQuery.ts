@@ -2,6 +2,7 @@ import { IMongoAnalyticsRepository }                        from "../../domain/i
 import { IAcademicQueryService }                            from "../../../academic";
 import { QuestionFailureRateView, QuestionFailureStat }    from "../../domain/read-models/QuestionFailureRateView";
 import { QuestionFailureRateDTO, QuestionFailureStatDTO }  from "../dtos/QuestionFailureRateDTO";
+import { IAnalyticCache, AnalyticCacheKey, AnalyticsCacheTTL } from "../../domain/interface-repositories/IAnalyticCache";
 
 // Actor:   Teacher
 // Permission: VIEW_ANALYTICS
@@ -11,6 +12,7 @@ export class QuestionFailureRateQuery {
   constructor(
     private readonly mongoRepo:       IMongoAnalyticsRepository,
     private readonly academicService: IAcademicQueryService,
+    private readonly cache:      IAnalyticCache,
   ) {}
 
   // GET /analytics/sections/:sectionId/quizzes/:quizId/question-failure-rate
@@ -24,9 +26,15 @@ export class QuestionFailureRateQuery {
     if (!ok) throw new Error(
       `AccessDeniedError: Teacher không được phép xem question failure rate của section "${sectionId}".`,
     );
-
+ 
+    const key    = AnalyticCacheKey.questionFailureRate(quizId, sectionId);
+    const cached = await this.cache.get<QuestionFailureRateDTO>(key);
+    if (cached) return cached;
+ 
     const view = await this.mongoRepo.findQuestionFailureRate(quizId, sectionId);
-    return view ? this.toDTO(view) : null;
+    const dto  = view ? this.toDTO(view) : null;
+    if (dto) await this.cache.set(key, dto, AnalyticsCacheTTL.NORMAL);
+    return dto;
   }
 
   // private helpers 

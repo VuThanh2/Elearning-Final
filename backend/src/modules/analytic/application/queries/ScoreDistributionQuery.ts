@@ -2,6 +2,7 @@ import { IOracleAnalyticsRepository }                from "../../domain/interfac
 import { IAcademicQueryService }                     from "../../../academic";
 import { ScoreDistributionView, ScoreRangeBucket }   from "../../domain/read-models/ScoreDistributionView";
 import { ScoreDistributionDTO, ScoreRangeBucketDTO } from "../dtos/ScoreDistributionDTO";
+import { IAnalyticCache, AnalyticCacheKey, AnalyticsCacheTTL } from "../../domain/interface-repositories/IAnalyticCache";
 
 // Actor:   Teacher | Admin
 // Permission: VIEW_ANALYTICS
@@ -9,6 +10,7 @@ export class ScoreDistributionQuery {
   constructor(
     private readonly oracleRepo:      IOracleAnalyticsRepository,
     private readonly academicService: IAcademicQueryService,
+    private readonly cache:      IAnalyticCache,
   ) {}
 
   // GET /analytics/sections/:sectionId/quizzes/:quizId/score-distribution
@@ -25,9 +27,15 @@ export class ScoreDistributionQuery {
         `AccessDeniedError: Teacher không được phép xem score distribution của section "${sectionId}".`,
       );
     }
-
+ 
+    const key    = AnalyticCacheKey.scoreDistribution(quizId, sectionId);
+    const cached = await this.cache.get<ScoreDistributionDTO>(key);
+    if (cached) return cached;
+ 
     const view = await this.oracleRepo.findScoreDistribution(quizId, sectionId);
-    return view ? this.toDTO(view) : null;
+    const dto  = view ? this.toDTO(view) : null;
+    if (dto) await this.cache.set(key, dto, AnalyticsCacheTTL.HEAVY);
+    return dto;
   }
 
   // private helpers

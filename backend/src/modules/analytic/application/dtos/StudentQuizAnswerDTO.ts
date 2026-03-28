@@ -9,7 +9,7 @@
 // Ownership enforcement:
 //   Query Service nhận studentId từ JWT, so sánh với studentId trong document.
 //   Nếu không khớp → throw AccessDeniedError.
-export interface StudentQuizAnswerReviewDTO {
+export interface StudentQuizAnswerDTO {
   readonly attemptId:     string;
   readonly quizId:        string;
   readonly sectionId:     string;
@@ -23,11 +23,11 @@ export interface StudentQuizAnswerReviewDTO {
   readonly status:        "SUBMITTED" | "EXPIRED";
 
   // Chi tiết từng câu trả lời
-  readonly answers: AnswerReviewItemDTO[];
+  readonly answers: AnswerItemDTO[];
 }
 
 // Chi tiết 1 câu hỏi trong review — hiển thị đúng/sai, đáp án đúng
-export interface AnswerReviewItemDTO {
+export interface AnswerItemDTO {
   readonly questionId:      string;
   readonly questionContent: string; // nội dung câu hỏi tại thời điểm làm bài
 

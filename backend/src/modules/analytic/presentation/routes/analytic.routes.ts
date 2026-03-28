@@ -1,5 +1,6 @@
 import { Router, RequestHandler } from "express";
 import oracledb                   from "oracledb";
+import { RedisClientType }        from "redis";
 
 // Infrastructure — Oracle
 import { OracleAnalyticsRepository }  from "../../infrastructure/database/sql/repositories/OracleAnalyticsRepository";
@@ -8,6 +9,10 @@ import { OracleAnalyticsRepository }  from "../../infrastructure/database/sql/re
 import { MongoAnalyticsRepository }   from "../../infrastructure/database/nosql/repositories/MongoAnalyticsRepository";
 import { StudentQuizAnswerModel }      from "../../infrastructure/database/nosql/models/StudentQuizAnswerModel";
 import { QuestionFailureRateModel }    from "../../infrastructure/database/nosql/models/QuestionFailureRateModel";
+
+// Infrastructure — Cache
+import { IAnalyticCache }    from "../../domain/interface-repositories/IAnalyticCache";
+import { RedisAnalyticCache } from "../../infrastructure/providers/RedisAnalyticCache";
 
 // Cross-context — Academic 
 import { createAcademicQueryService } from "../../../academic";
@@ -68,6 +73,7 @@ import { AdminAnalyticsController }   from "../../presentation/controllers/Admin
 //     GET /analytics/sections/:sectionId/quizzes/:quizId/score-distribution  (shared với Teacher)
 export function createAnalyticsRouter(
   oracleConnection:           oracledb.Connection,
+  redisClient:                RedisClientType,
   authenticate:               RequestHandler,
   authorizeViewAnalytics:     RequestHandler,
   authorizeViewAtRisk:        RequestHandler,
@@ -87,18 +93,20 @@ export function createAnalyticsRouter(
     QuestionFailureRateModel,
   );
 
+  const cache: IAnalyticCache = new RedisAnalyticCache(redisClient);
+
   // Academic Context — dùng chung cho Query cần verify section assignment
   const academicService = createAcademicQueryService(oracleConnection);
 
   // Application: Queries 
-  const quizPerformanceQuery     = new QuizPerformanceQuery(oracleRepo, academicService);
-  const studentQuizResultQuery   = new StudentQuizResultQuery(oracleRepo);
-  const atRiskStudentQuery       = new AtRiskStudentQuery(oracleRepo, academicService);
-  const studentClassRankingQuery = new StudentClassRankingQuery(oracleRepo);
-  const scoreDistributionQuery   = new ScoreDistributionQuery(oracleRepo, academicService);
-  const hierarchicalReportQuery  = new HierarchicalQuizReportQuery(oracleRepo);
-  const studentQuizAnswerQuery   = new StudentQuizAnswerQuery(mongoRepo);
-  const questionFailureRateQuery = new QuestionFailureRateQuery(mongoRepo, academicService);
+  const quizPerformanceQuery     = new QuizPerformanceQuery(oracleRepo, academicService, cache);
+  const studentQuizResultQuery   = new StudentQuizResultQuery(oracleRepo, cache);
+  const atRiskStudentQuery       = new AtRiskStudentQuery(oracleRepo, academicService, cache);
+  const studentClassRankingQuery = new StudentClassRankingQuery(oracleRepo, cache);
+  const scoreDistributionQuery   = new ScoreDistributionQuery(oracleRepo, academicService, cache);
+  const hierarchicalReportQuery  = new HierarchicalQuizReportQuery(oracleRepo, cache);
+  const studentQuizAnswerQuery   = new StudentQuizAnswerQuery(mongoRepo, cache);
+  const questionFailureRateQuery = new QuestionFailureRateQuery(mongoRepo, academicService, cache);
  
   // Presentation: Controllers 
   const teacherController = new TeacherAnalyticsController(

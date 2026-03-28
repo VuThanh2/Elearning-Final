@@ -1,6 +1,7 @@
 import { IOracleAnalyticsRepository }       from "../../domain/interface-repositories/IOracleAnalyticsRepository";
 import { StudentQuizResultView }             from "../../domain/read-models/StudentQuizResultView";
 import { StudentQuizResultDTO, AttemptStatus } from "../dtos/StudentQuizResultDTO";
+import { IAnalyticCache, AnalyticCacheKey, AnalyticsCacheTTL } from "../../domain/interface-repositories/IAnalyticCache";
 
 // Actor:   Student
 // Permission: VIEW_OWN_RESULT
@@ -12,6 +13,7 @@ import { StudentQuizResultDTO, AttemptStatus } from "../dtos/StudentQuizResultDT
 export class StudentQuizResultQuery {
   constructor(
     private readonly oracleRepo: IOracleAnalyticsRepository,
+    private readonly cache:      IAnalyticCache,
   ) {}
 
   // GET /analytics/sections/:sectionId/my-results
@@ -20,11 +22,14 @@ export class StudentQuizResultQuery {
     studentId: string,
     sectionId: string,
   ): Promise<StudentQuizResultDTO[]> {
-    const views = await this.oracleRepo.findStudentResultsBySection(
-      studentId,
-      sectionId,
-    );
-    return views.map((view) => this.toDTO(view));
+    const key    = AnalyticCacheKey.studentResultsBySection(studentId, sectionId);
+    const cached = await this.cache.get<StudentQuizResultDTO[]>(key);
+    if (cached) return cached;
+ 
+    const views = await this.oracleRepo.findStudentResultsBySection(studentId, sectionId);
+    const dtos  = views.map((view) => this.toDTO(view));
+    await this.cache.set(key, dtos, AnalyticsCacheTTL.NORMAL);
+    return dtos;
   }
 
   // GET /analytics/quizzes/:quizId/my-results
@@ -33,11 +38,14 @@ export class StudentQuizResultQuery {
     studentId: string,
     quizId:    string,
   ): Promise<StudentQuizResultDTO[]> {
-    const views = await this.oracleRepo.findStudentResultsByQuiz(
-      studentId,
-      quizId,
-    );
-    return views.map((view) => this.toDTO(view));
+    const key    = AnalyticCacheKey.studentResultsByQuiz(studentId, quizId);
+    const cached = await this.cache.get<StudentQuizResultDTO[]>(key);
+    if (cached) return cached;
+ 
+    const views = await this.oracleRepo.findStudentResultsByQuiz(studentId, quizId);
+    const dtos  = views.map((view) => this.toDTO(view));
+    await this.cache.set(key, dtos, AnalyticsCacheTTL.NORMAL);
+    return dtos;
   }
 
   // private helpers

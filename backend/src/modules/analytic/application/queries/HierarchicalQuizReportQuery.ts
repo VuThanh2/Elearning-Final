@@ -1,5 +1,6 @@
 import { IOracleAnalyticsRepository }  from "../../domain/interface-repositories/IOracleAnalyticsRepository";
 import { HierarchicalQuizReportView, HierarchicalReportSummary, HierarchicalLevel } from "../../domain/read-models/HierarchicalQuizReportView";
+import { IAnalyticCache, AnalyticCacheKey, AnalyticsCacheTTL } from "../../domain/interface-repositories/IAnalyticCache";
 import {
   HierarchicalReportRowDTO,
   HierarchicalReportTreeDTO,
@@ -23,36 +24,64 @@ export type HierarchicalScope =
 export class HierarchicalQuizReportQuery {
   constructor(
     private readonly oracleRepo: IOracleAnalyticsRepository,
+    private readonly cache:      IAnalyticCache,
   ) {}
 
   // GET /analytics/hierarchical-report[/faculty/:id | /course/:id]
   // → HierarchicalReportRowDTO[]
   async flat(scope: HierarchicalScope): Promise<HierarchicalReportRowDTO[]> {
+    const key    = this.flatCacheKey(scope);
+    const cached = await this.cache.get<HierarchicalReportRowDTO[]>(key);
+    if (cached) return cached;
+ 
     let views: HierarchicalQuizReportView[];
     switch (scope.type) {
       case "ALL":     views = await this.oracleRepo.findHierarchicalReport(); break;
       case "FACULTY": views = await this.oracleRepo.findHierarchicalReportByFaculty(scope.facultyId); break;
       case "COURSE":  views = await this.oracleRepo.findHierarchicalReportByCourse(scope.courseId); break;
     }
-    return views.map((view) => this.toRowDTO(view));
+ 
+    const dtos = views.map((view) => this.toRowDTO(view));
+    await this.cache.set(key, dtos, AnalyticsCacheTTL.HEAVY);
+    return dtos;
   }
 
   // GET /analytics/hierarchical-report/tree
   // → HierarchicalReportTreeDTO
   async tree(): Promise<HierarchicalReportTreeDTO> {
+    const key    = AnalyticCacheKey.hierarchicalTree();
+    const cached = await this.cache.get<HierarchicalReportTreeDTO>(key);
+    if (cached) return cached;
+ 
     const views = await this.oracleRepo.findHierarchicalReport();
     const rows  = views.map((view) => this.toRowDTO(view));
-    return { generatedAt: new Date().toISOString(), faculties: this.buildFaculties(rows) };
+    const dto   = { generatedAt: new Date().toISOString(), faculties: this.buildFaculties(rows) };
+    await this.cache.set(key, dto, AnalyticsCacheTTL.HEAVY);
+    return dto;
   }
 
   // GET /analytics/hierarchical-report/summary?level=FACULTY&unitId=...
   // → HierarchicalUnitSummaryDTO | null
   async summary(level: HierarchicalLevel, unitId: string): Promise<HierarchicalUnitSummaryDTO | null> {
-    const s = await this.oracleRepo.findHierarchicalSummary(level, unitId);
-    return s ? this.toSummaryDTO(s) : null;
+    const key    = AnalyticCacheKey.hierarchicalSummary(level, unitId);
+    const cached = await this.cache.get<HierarchicalUnitSummaryDTO>(key);
+    if (cached) return cached;
+ 
+    const s   = await this.oracleRepo.findHierarchicalSummary(level, unitId);
+    const dto = s ? this.toSummaryDTO(s) : null;
+    if (dto) await this.cache.set(key, dto, AnalyticsCacheTTL.HEAVY);
+    return dto;
   }
 
   // private helpers 
+  private flatCacheKey(scope: HierarchicalScope): string {
+    switch (scope.type) {
+      case "ALL":     return AnalyticCacheKey.hierarchicalAll();
+      case "FACULTY": return AnalyticCacheKey.hierarchicalByFaculty(scope.facultyId);
+      case "COURSE":  return AnalyticCacheKey.hierarchicalByCourse(scope.courseId);
+    }
+  }
+
   // HierarchicalQuizReportView (domain) → HierarchicalReportRowDTO (application)
   private toRowDTO(view: HierarchicalQuizReportView): HierarchicalReportRowDTO {
     return {
