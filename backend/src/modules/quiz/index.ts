@@ -1,6 +1,10 @@
+import { EventEmitter }  from "events";
 import { QuizModel }       from "./infrastructure/models/QuizModel";
 import { QuizRepository }  from "./infrastructure/repositories/QuizRepository";
 import { QuizQueryService } from "./application/services/QuizQueryService";
+import { QuizExpirationJob }      from "./infrastructure/jobs/QuizExpirationJob";
+import { EventEmitterProvider }   from "./infrastructure/providers/EventEmitterProvider";
+import { SystemDateTimeProvider } from "./infrastructure/providers/SystemDateTimeProvider";
 
 // Entry point của Quiz Context.
 //   - Module khác CHỈ được import từ file này
@@ -36,4 +40,20 @@ export type {
 export function createQuizQueryService(): QuizQueryService {
   const quizRepository = new QuizRepository(QuizModel);
   return new QuizQueryService(quizRepository);
+}
+
+export function createQuizExpirationJob(
+  eventEmitter: EventEmitter,
+  intervalMs:   number = 60_000,
+): QuizExpirationJob {
+  const quizRepository   = new QuizRepository(QuizModel);
+  const eventPublisher   = new EventEmitterProvider(eventEmitter);
+  const dateTimeProvider = new SystemDateTimeProvider();
+ 
+  return new QuizExpirationJob(
+    quizRepository,
+    eventPublisher,
+    dateTimeProvider,
+    intervalMs,
+  );
 }

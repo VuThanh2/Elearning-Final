@@ -45,17 +45,13 @@ export class RedisAnalyticCache implements IAnalyticCache {
 
   async invalidatePattern(pattern: string): Promise<void> {
     try {
-      // SCAN thay vì KEYS để tránh blocking Redis
-      // scanIterator trả về AsyncIterator trên tất cả key khớp pattern
-      const keysToDelete: string[] = [];
-
-      for await (const key of this.redis.scanIterator({ MATCH: pattern, COUNT: 100 })) {
-        keysToDelete.push(...key);
+      for await (const keys of this.redis.scanIterator({ MATCH: pattern, COUNT: 100 })) {
+      // scanIterator yield từng batch (string[]) — delete ngay trong loop
+      // tránh accumulate toàn bộ keys vào memory trước khi delete
+      if (keys.length > 0) {
+        await this.redis.del(keys);
       }
-
-      if (keysToDelete.length > 0) {
-        await this.redis.del(keysToDelete);
-      }
+    }
     } catch (err) {
       console.warn(`[AnalyticsCache] SCAN+DEL failed pattern="${pattern}":`, err instanceof Error ? err.message : err);
       // Silent fail

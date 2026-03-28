@@ -12,6 +12,12 @@ services:
     ports:
     - "27017:27017"
     #Production: xoá ports, không expose port ra ngoài
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   redis:
     image: redis:7
@@ -23,6 +29,12 @@ services:
     ports:
     - "6379:6379"
     #Production: xoá ports, không expose port ra ngoài
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   oracle:
     image: gvenzl/oracle-xe:21-slim
@@ -39,6 +51,18 @@ services:
     ports:
     - "1521:1521"
     #Production: xoá ports, không expose port ra ngoài
+    # Oracle XE khởi động chậm (30-90 giây tuỳ máy).
+    # healthcheck dùng sqlplus để verify DB thực sự ready nhận connection —
+    # tránh server.ts connectOracle() fail vì Oracle chưa xong init.
+    # start_period: 60s cho Oracle đủ thời gian boot trước khi bắt đầu check.
+    healthcheck:
+      test: ["CMD", "sqlplus", "-L",
+             "${ORACLE_USER}/${ORACLE_PASSWORD}@//localhost:1521/XEPDB1",
+             "@/dev/null"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
 
 networks:
   backend_net:

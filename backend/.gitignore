@@ -3,10 +3,6 @@ node_modules/
 
 # TypeScript build output
 dist/
-*.js
-*.js.map
-*.d.ts
-*.d.ts.map
 
 # Logs
 logs/
@@ -23,3 +19,14 @@ yarn-error.log*
 # IDE files
 .vscode/
 .idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+ 
+# Test coverage
+coverage/
+ 
+# Temp files
+*.tmp
+*.temp
