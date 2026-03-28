@@ -86,15 +86,6 @@ CREATE TABLE TEACHING_ASSIGNMENTS (
     CONSTRAINT FK_TEACH_SECTION
         FOREIGN KEY (SECTION_ID)
         REFERENCES  ACADEMIC_UNITS (UNIT_ID),
-
-    -- Rule: Teaching Assignment Must Reference a Section (TYPE = 'SECTION')
-    -- Dùng sub-query CHECK để đảm bảo teacher không thể được assign
-    -- vào FACULTY hay COURSE — chỉ được assign vào SECTION.
-    CONSTRAINT CHK_TEACH_SECTION_TYPE CHECK (
-        SECTION_ID IN (
-            SELECT UNIT_ID FROM ACADEMIC_UNITS WHERE TYPE = 'SECTION'
-        )
-    )
 );
 
 -- Index trên TEACHER_ID để tăng tốc isTeacherAssignedToSection()
@@ -122,12 +113,6 @@ CREATE TABLE ENROLLMENTS (
     CONSTRAINT FK_ENROLL_SECTION
         FOREIGN KEY (SECTION_ID)
         REFERENCES  ACADEMIC_UNITS (UNIT_ID),
-    -- Rule: Enrollment Must Reference a Section (TYPE = 'SECTION')
-    CONSTRAINT CHK_ENROLL_SECTION_TYPE CHECK (
-        SECTION_ID IN (
-            SELECT UNIT_ID FROM ACADEMIC_UNITS WHERE TYPE = 'SECTION'
-        )
-    )
 );
 
 -- Index trên STUDENT_ID để tăng tốc isStudentEnrolledInSection()
