@@ -22,12 +22,6 @@ import { TeachingSectionDTO }  from "../dtos/TeachingSectionDTO";
 //   Repository     → 1 Oracle query, JOIN 3 tầng (không N+1)
 //   Query          → map SectionWithContextRow[] → TeachingSectionDTO[]
 //   Controller     → res.json(dtos)
-//
-// Phân biệt với GetSectionsByStudentQuery:
-//   - File này JOIN từ TEACHING_ASSIGNMENTS → phục vụ Teacher
-//   - GetSectionsByStudentQuery JOIN từ ENROLLMENTS → phục vụ Student
-//   - Cùng shape DTO (đều extend SectionDTO) nhưng nguồn gốc data khác nhau,
-//     actor khác nhau, route khác nhau — tách riêng để evolve độc lập
 export class GetSectionsByTeacherQuery {
   constructor(
     private readonly academicRepository: IAcademicRepository,

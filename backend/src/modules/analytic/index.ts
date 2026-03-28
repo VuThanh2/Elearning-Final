@@ -1,33 +1,19 @@
+import { EventEmitter } from "events";
+import oracledb         from "oracledb";
+import { RequestHandler } from "express";
+
 // Quy tắc nhất quán với toàn project:
 //   Module ngoài CHỈ được import từ file này.
 //   Mọi thứ bên trong analytics/ là internal — không ai import thẳng vào.
 //
-// Tuy nhiên, "module ngoài" ở đây thực tế chỉ có đúng 1 nơi:
-//   server.ts — cần factory function để wire DI khi bootstrap.
-//
-// Read Model types cũng không cần export ra đây.
-//   Không có context nào khác (Identity, Quiz, Academic, QuizAttempt)
-//   cần biết về QuizPerformanceView hay AtRiskStudentView.
-//   Analytics là context đầu cuối — chỉ nhận event vào, không phát ra ngoài.
-//
-// Vì vậy index.ts này chỉ export đúng 1 thứ có ý nghĩa cross-context:
-//   createAnalyticsQueryService() — factory để server.ts wire DI.
-
-// TODO: Uncomment khi Application và Infrastructure layer được implement.
-//
-// import oracledb from "oracledb";
-// import { AnalyticsOracleRepository } from "./infrastructure/repositories/AnalyticsOracleRepository";
-// import { AnalyticsMongoRepository }  from "./infrastructure/repositories/AnalyticsMongoRepository";
-// import { AnalyticsQueryService }     from "./application/services/AnalyticsQueryService";
-//
-// Nhận oracleConnection từ server.ts (dùng chung, không tạo mới).
-// MongoDB không cần truyền vào — dùng Mongoose global connection
-// giống Quiz Context và QuizAttempt Context.
-//
-// export function createAnalyticsQueryService(
-//   oracleConnection: oracledb.Connection,
-// ): AnalyticsQueryService {
-//   const oracleRepo = new AnalyticsOracleRepository(oracleConnection);
-//   const mongoRepo  = new AnalyticsMongoRepository();
-//   return new AnalyticsQueryService(oracleRepo, mongoRepo);
-// }
+// "Module ngoài" của Analytics Context chỉ có đúng 1 nơi: server.ts.
+//   server.ts cần 2 thứ từ Analytics:
+//     1. createAnalyticsRouter()           — mount HTTP routes
+//     2. createAnalyticsEventSubscriber()  — register event listeners
+//   server.ts chỉ cần factory để wire DI — không cần biết implementation bên trong.
+export { createAnalyticsRouter }         from "./presentation/routes/analytic.routes";
+export { createAnalyticsEventSubscriber } from "./infrastructure/providers/AnalyticsEventSubscriber";
+ 
+// Re-export type AnalyticsEventSubscriber để server.ts có thể type-check
+// biến lưu subscriber instance mà không cần import thẳng từ infrastructure.
+export type { AnalyticsEventSubscriber } from "./infrastructure/providers/AnalyticsEventSubscriber";
