@@ -8,6 +8,7 @@ import { GetQuizUseCase, GetQuizListUseCase } from "../../application/use-cases/
 import { CreateQuizDTO }     from "../../application/dtos/CreateQuizDTO";
 import { UpdateQuizDTO }     from "../../application/dtos/UpdateQuizDTO";
 import { UpdateDeadlineDTO } from "../../application/dtos/UpdateDeadlineDTO";
+import { GetPublishedQuizListUseCase } from "../../application/use-cases/GetPublishedQuizListUseCase";
 
 // teacherId luôn lấy từ req.user (JWT payload đã verify bởi middleware).
 
@@ -20,6 +21,7 @@ export class QuizController {
     private readonly hideQuizUseCase:       HideQuizUseCase,
     private readonly getQuizUseCase:        GetQuizUseCase,
     private readonly getQuizListUseCase:    GetQuizListUseCase,
+    private readonly getPublishedQuizListUseCase:   GetPublishedQuizListUseCase,
   ) {}
 
   // POST /quizzes
@@ -144,6 +146,24 @@ export class QuizController {
       res.status(mapErrorToStatus(message)).json({ message });
     }
   }
+
+  // GET /sections/:sectionId/quizzes/published
+  //
+  // Actor: Student (và Teacher nếu muốn preview danh sách bài đã published)
+  async getPublishedQuizList(
+    req: Request<{ sectionId: string }>,
+    res: Response
+  ): Promise<void> {
+    try {
+      const result = await this.getPublishedQuizListUseCase.execute(
+        req.params.sectionId,
+      );
+      res.status(200).json(result);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Lỗi không xác định.";
+      res.status(mapErrorToStatus(message)).json({ message });
+    }
+  }
 }
 
 // map error prefix của Quiz Context → HTTP status
@@ -159,7 +179,6 @@ export class QuizController {
 //   400 = format sai (validator bắt trước đó rồi)
 //   422 = format đúng nhưng không xử lý được theo business rule
 //   (publish quiz Expired, rút ngắn deadline...)
-
 function mapErrorToStatus(message: string): number {
   if (message.startsWith("ValidationError:"))   return 400;
   if (message.startsWith("NotFoundError:"))     return 404;

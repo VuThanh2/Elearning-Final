@@ -110,6 +110,7 @@ const startServer = async (): Promise<void> => {
       eventEmitter,
       authenticate,
       authorize(PermissionType.CREATE_QUIZ),
+      authorize(PermissionType.ATTEMPT_QUIZ),
     ),
   );
 

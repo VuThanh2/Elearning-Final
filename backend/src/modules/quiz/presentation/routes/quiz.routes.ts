@@ -19,18 +19,21 @@ import { UpdateDeadlineUseCase }     from "../../application/use-cases/UpdateDea
 import { PublishQuizUseCase }        from "../../application/use-cases/PublishQuizUseCase";
 import { HideQuizUseCase }           from "../../application/use-cases/HideQuizUseCase";
 import { GetQuizUseCase, GetQuizListUseCase } from "../../application/use-cases/GetQuizUseCase";
+import { GetPublishedQuizListUseCase } from "../../application/use-cases/GetPublishedQuizListUseCase";
 import { AddQuestionUseCase, RemoveQuestionUseCase, UpdateQuestionUseCase } from "../../application/use-cases/AddQuestionUseCase";
 import { AddAnswerOptionUseCase, RemoveAnswerOptionUseCase, UpdateAnswerOptionUseCase } from "../../application/use-cases/AddAnswerOptionUseCase";
 
 // Presentation
 import { QuizController }            from "../../presentation/controllers/QuizController";
 import { QuizQuestionController }    from "../../presentation/controllers/QuizQuestionController";
+import { get } from "http";
 
 export function createQuizRouter(
   oracleConnection: oracledb.Connection,
   eventEmitter:     EventEmitter,
   authenticate:     RequestHandler,
   authorizeTeacher: RequestHandler,
+  authorizeAttemptQuiz: RequestHandler,
 ): Router {
   const router = Router();
 
@@ -50,6 +53,7 @@ export function createQuizRouter(
   const hideQuizUseCase       = new HideQuizUseCase(quizRepository, dateTimeProvider, eventPublisher);
   const getQuizUseCase        = new GetQuizUseCase(quizRepository);
   const getQuizListUseCase    = new GetQuizListUseCase(quizRepository);
+  const getPublishedQuizListUseCase = new GetPublishedQuizListUseCase(quizRepository);
 
   const addQuestionUseCase        = new AddQuestionUseCase(quizRepository, dateTimeProvider);
   const removeQuestionUseCase     = new RemoveQuestionUseCase(quizRepository, dateTimeProvider);
@@ -67,6 +71,7 @@ export function createQuizRouter(
     hideQuizUseCase,
     getQuizUseCase,
     getQuizListUseCase,
+    getPublishedQuizListUseCase,
   );
 
   const quizQuestionController = new QuizQuestionController(
@@ -93,6 +98,7 @@ export function createQuizRouter(
   router.post(  "/quizzes/:quizId/publish",     authenticate, authorizeTeacher, quizController.publishQuiz.bind(quizController));
   router.post(  "/quizzes/:quizId/hide",        authenticate, authorizeTeacher, quizController.hideQuiz.bind(quizController));
   router.get(   "/sections/:sectionId/quizzes", authenticate, authorizeTeacher, quizController.getQuizList.bind(quizController));
+  router.get(   "/sections/:sectionId/quizzes/published", authenticate, authorizeAttemptQuiz, quizController.getPublishedQuizList.bind(quizController));
 
   // Question
   router.post(  "/quizzes/:quizId/questions",                               authenticate, authorizeTeacher, quizQuestionController.addQuestion.bind(quizQuestionController));

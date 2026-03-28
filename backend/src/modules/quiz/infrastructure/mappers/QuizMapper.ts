@@ -8,7 +8,7 @@ import { Deadline } from "../../domain/value-objects/Deadline";
 import { MaxAttempts } from "../../domain/value-objects/MaxAttempts";
 import { Points } from "../../domain/value-objects/Points";
 import { IQuizDocument, IQuestionDocument, IAnswerOptionDocument } from "../models/QuizModel";
-import { AnswerOptionResponseDTO, QuestionResponseDTO, QuizDetailDTO, QuizSummaryDTO } from "../../application/dtos/QuizResponseDTO";
+import { AnswerOptionResponseDTO, QuestionResponseDTO, QuizDetailDTO, QuizSummaryDTO, PublishedQuizSummaryDTO } from "../../application/dtos/QuizResponseDTO";
 
 // 3 nhóm methods:
 //   toDomain()        — IQuizDocument (MongoDB) → Quiz entity
@@ -113,6 +113,23 @@ export class QuizMapper {
       totalQuestions:   quiz.questions.length,
       createdAt:        quiz.createdAt.toISOString(),
       updatedAt:        quiz.updatedAt?.toISOString() ?? null,
+    };
+  }
+
+  // Quiz entity → PublishedQuizSummaryDTO
+  // Dành cho: GET /sections/:sectionId/quizzes/published (Student)
+  static toPublishedSummaryDTO(quiz: Quiz): PublishedQuizSummaryDTO {
+    return {
+      quizId:           quiz.quizId,
+      sectionId:        quiz.sectionId,
+      title:            quiz.title,
+      description:      quiz.description,
+      timeLimitMinutes: quiz.timeLimit.minutes,
+      deadlineAt:       quiz.deadline.value.toISOString(),
+      maxAttempts:      quiz.maxAttempts.value,
+      maxScore:         quiz.maxScore.value,
+      totalQuestions:   quiz.questions.length,
+      createdAt:        quiz.createdAt.toISOString(),
     };
   }
 

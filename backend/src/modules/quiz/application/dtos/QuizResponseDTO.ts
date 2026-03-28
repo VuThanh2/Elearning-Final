@@ -54,3 +54,18 @@ export interface QuizSummaryDTO {
   createdAt:        string;
   updatedAt:        string | null;
 }
+
+// GET /sections/:sectionId/quizzes/published
+// Actor: Student (và Teacher nếu muốn preview)
+export interface PublishedQuizSummaryDTO {
+  quizId:           string;
+  sectionId:        string;
+  title:            string;
+  description:      string;
+  timeLimitMinutes: number;
+  deadlineAt:       string;   // ISO 8601 — frontend tự format
+  maxAttempts:      number;
+  maxScore:         number;
+  totalQuestions:   number;
+  createdAt:        string;   // ISO 8601
+}
