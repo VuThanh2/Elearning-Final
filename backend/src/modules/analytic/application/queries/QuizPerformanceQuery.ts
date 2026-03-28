@@ -26,9 +26,7 @@ export class QuizPerformanceQuery {
     await this.assertTeacherAssigned(teacherId, sectionId);
 
     const view = await this.oracleRepo.findQuizPerformance(quizId, sectionId);
-    if (!view) return null;
-
-    return this.toDTO(view);
+    return view ? this.toDTO(view) : null;
   }
 
   // GET /analytics/sections/:sectionId/performance
@@ -41,7 +39,7 @@ export class QuizPerformanceQuery {
     await this.assertTeacherAssigned(teacherId, sectionId);
 
     const views = await this.oracleRepo.findQuizPerformanceBySection(sectionId);
-    return views.map(this.toDTO);
+    return views.map((view) => this.toDTO(view));
   }
 
   // private helpers 

@@ -24,7 +24,7 @@ export class StudentQuizResultQuery {
       studentId,
       sectionId,
     );
-    return views.map(this.toDTO);
+    return views.map((view) => this.toDTO(view));
   }
 
   // GET /analytics/quizzes/:quizId/my-results
@@ -37,7 +37,7 @@ export class StudentQuizResultQuery {
       studentId,
       quizId,
     );
-    return views.map(this.toDTO);
+    return views.map((view) => this.toDTO(view));
   }
 
   // private helpers

@@ -26,7 +26,6 @@ import { QuestionFailureRateQuery } from "../../application/queries/QuestionFail
 import { TeacherAnalyticsController } from "../../presentation/controllers/TeacherAnalyticsController";
 import { StudentAnalyticsController } from "../../presentation/controllers/StudentAnalyticsController";
 import { AdminAnalyticsController }   from "../../presentation/controllers/AdminAnalyticsController";
-import { get } from "node:http";
 
 // DI được wire thủ công theo pattern của project:
 //   Infrastructure (Repository)
@@ -92,32 +91,31 @@ export function createAnalyticsRouter(
   const academicService = createAcademicQueryService(oracleConnection);
 
   // Application: Queries 
-  const getQuizPerformanceQuery     = new QuizPerformanceQuery(oracleRepo, academicService);
-  const getStudentQuizResultQuery   = new StudentQuizResultQuery(oracleRepo);
-  const getAtRiskStudentsQuery      = new AtRiskStudentQuery(oracleRepo, academicService);
-  const getStudentClassRankingQuery = new StudentClassRankingQuery(oracleRepo);
-  const getScoreDistributionQuery   = new ScoreDistributionQuery(oracleRepo, academicService);
-  const getHierarchicalReportQuery  = new HierarchicalQuizReportQuery(oracleRepo);
-  const getStudentQuizAnswerQuery   = new StudentQuizAnswerQuery(mongoRepo);
-  const getQuestionFailureRateQuery = new QuestionFailureRateQuery(mongoRepo, academicService);
-
-  // Presentation: Controllers
+  const quizPerformanceQuery     = new QuizPerformanceQuery(oracleRepo, academicService);
+  const studentQuizResultQuery   = new StudentQuizResultQuery(oracleRepo);
+  const atRiskStudentQuery       = new AtRiskStudentQuery(oracleRepo, academicService);
+  const studentClassRankingQuery = new StudentClassRankingQuery(oracleRepo);
+  const scoreDistributionQuery   = new ScoreDistributionQuery(oracleRepo, academicService);
+  const hierarchicalReportQuery  = new HierarchicalQuizReportQuery(oracleRepo);
+  const studentQuizAnswerQuery   = new StudentQuizAnswerQuery(mongoRepo);
+  const questionFailureRateQuery = new QuestionFailureRateQuery(mongoRepo, academicService);
+ 
+  // Presentation: Controllers 
   const teacherController = new TeacherAnalyticsController(
-    getQuizPerformanceQuery,
-    getAtRiskStudentsQuery,
-    getScoreDistributionQuery,
-    getQuestionFailureRateQuery,
+    quizPerformanceQuery,
+    atRiskStudentQuery,
+    scoreDistributionQuery,
+    questionFailureRateQuery,
   );
-
+ 
   const studentController = new StudentAnalyticsController(
-    getStudentQuizResultQuery,
-    getStudentQuizAnswerQuery,
-    getStudentClassRankingQuery,
+    studentQuizResultQuery,
+    studentQuizAnswerQuery,
+    studentClassRankingQuery,
   );
-
+ 
   const adminController = new AdminAnalyticsController(
-    getHierarchicalReportQuery,
-    getScoreDistributionQuery,
+    hierarchicalReportQuery
   );
 
   // Routes 
@@ -145,12 +143,10 @@ export function createAnalyticsRouter(
     teacherController.getAtRiskStudents.bind(teacherController),
   );
 
-  // Shared route: Teacher (VIEW_ANALYTICS) + Admin (VIEW_ANALYTICS)
-  // Score distribution: cùng route, Controller khác nhau, actorRole khác nhau.
-  // Không thể dùng cùng 1 middleware chain vì Teacher cần verify section assignment,
-  // Admin thì không. Tách thành 2 route với prefix khác nhau để rõ ràng.
-  //
-  // Teacher: /sections/:sectionId/quizzes/:quizId/score-distribution
+  // Shared route: Teacher + Admin — VIEW_ANALYTICS
+  // 1 route duy nhất — Controller đọc req.user.roleName để xác định actorRole.
+  // Teacher → ScoreDistributionQuery.execute(actorId, "TEACHER", ...) → verify section assignment
+  // Admin   → ScoreDistributionQuery.execute(actorId, "ADMIN", ...)  → không cần verify
   router.get(
     "/sections/:sectionId/quizzes/:quizId/score-distribution",
     authenticate, authorizeViewAnalytics,
@@ -213,16 +209,6 @@ export function createAnalyticsRouter(
     "/hierarchical-report",
     authenticate, authorizeViewHierarchical,
     adminController.getFullReport.bind(adminController),
-  );
-
-  // Admin — VIEW_ANALYTICS (score distribution không giới hạn section)
-  // Mount trên prefix khác với Teacher để phân biệt actorRole trong controller.
-  // Admin dùng route /admin/sections/:sectionId/... để tránh conflict với Teacher route
-  // vì cùng path pattern nhưng khác authorization model.
-  router.get(
-    "/admin/sections/:sectionId/quizzes/:quizId/score-distribution",
-    authenticate, authorizeViewAnalytics,
-    adminController.getScoreDistribution.bind(adminController),
   );
 
   return router;

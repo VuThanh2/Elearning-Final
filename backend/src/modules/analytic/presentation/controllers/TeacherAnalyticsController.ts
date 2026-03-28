@@ -19,10 +19,10 @@ import { QuestionFailureRateQuery } from "../../application/queries/QuestionFail
 // không bao giờ nhận từ body/param để tránh impersonation.
 export class TeacherAnalyticsController {
   constructor(
-    private readonly getQuizPerformanceQuery:     QuizPerformanceQuery,
-    private readonly getAtRiskStudentsQuery:      AtRiskStudentQuery,
-    private readonly getScoreDistributionQuery:   ScoreDistributionQuery,
-    private readonly getQuestionFailureRateQuery: QuestionFailureRateQuery,
+    private readonly quizPerformanceQuery:     QuizPerformanceQuery,
+    private readonly atRiskStudentQuery:       AtRiskStudentQuery,
+    private readonly scoreDistributionQuery:   ScoreDistributionQuery,
+    private readonly questionFailureRateQuery: QuestionFailureRateQuery,
   ) {}
 
   // GET /analytics/sections/:sectionId/quizzes/:quizId/performance
@@ -34,7 +34,7 @@ export class TeacherAnalyticsController {
     res: Response,
   ): Promise<void> {
     try {
-      const result = await this.getQuizPerformanceQuery.byQuiz(
+      const result = await this.quizPerformanceQuery.byQuiz(
         req.user!.userId,
         req.params.quizId,
         req.params.sectionId,
@@ -55,7 +55,7 @@ export class TeacherAnalyticsController {
     res: Response,
   ): Promise<void> {
     try {
-      const result = await this.getQuizPerformanceQuery.bySection(
+      const result = await this.quizPerformanceQuery.bySection(
         req.user!.userId,
         req.params.sectionId,
       );
@@ -74,7 +74,7 @@ export class TeacherAnalyticsController {
     res: Response,
   ): Promise<void> {
     try {
-      const result = await this.getAtRiskStudentsQuery.bySection(
+      const result = await this.atRiskStudentQuery.bySection(
         req.user!.userId,
         req.params.sectionId,
       );
@@ -89,14 +89,20 @@ export class TeacherAnalyticsController {
   // Permission: VIEW_ANALYTICS
   // Response 200: ScoreDistributionDTO | null
   // null = chưa có attempt submitted nào.
+  // actorRole đọc từ req.user.roleName (đã có trong JWT payload sau authenticate):
+  //   "Teacher" → ScoreDistributionQuery verify isTeacherAssignedToSection
+  //   "Admin"   → ScoreDistributionQuery bỏ qua verify
   async getScoreDistribution(
     req: Request<{ sectionId: string; quizId: string }>,
     res: Response,
   ): Promise<void> {
     try {
-      const result = await this.getScoreDistributionQuery.execute(
+      const roleName = req.user!.roleName;
+      const actorRole = roleName === "Admin" ? "ADMIN" : "TEACHER";
+ 
+      const result = await this.scoreDistributionQuery.execute(
         req.user!.userId,
-        "TEACHER",
+        actorRole,
         req.params.quizId,
         req.params.sectionId,
       );
@@ -116,7 +122,7 @@ export class TeacherAnalyticsController {
     res: Response,
   ): Promise<void> {
     try {
-      const result = await this.getQuestionFailureRateQuery.execute(
+      const result = await this.questionFailureRateQuery.execute(
         req.user!.userId,
         req.params.quizId,
         req.params.sectionId,

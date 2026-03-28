@@ -14,8 +14,7 @@ import { HierarchicalLevel } from "../../domain/read-models/HierarchicalQuizRepo
 //   nhận actorRole = "ADMIN" để bỏ qua bước đó.
 export class AdminAnalyticsController {
   constructor(
-    private readonly getHierarchicalReportQuery: HierarchicalQuizReportQuery,
-    private readonly getScoreDistributionQuery:  ScoreDistributionQuery,
+    private readonly hierarchicalReportQuery: HierarchicalQuizReportQuery,
   ) {}
 
   // GET /analytics/hierarchical-report
@@ -26,7 +25,7 @@ export class AdminAnalyticsController {
     res: Response,
   ): Promise<void> {
     try {
-      const result = await this.getHierarchicalReportQuery.flat({ type: "ALL" });
+      const result = await this.hierarchicalReportQuery.flat({ type: "ALL" });
       res.status(200).json(result);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Lỗi không xác định.";
@@ -43,7 +42,7 @@ export class AdminAnalyticsController {
   ): Promise<void> {
     try {
       const scope: HierarchicalScope = { type: "FACULTY", facultyId: req.params.facultyId };
-      const result = await this.getHierarchicalReportQuery.flat(scope);
+      const result = await this.hierarchicalReportQuery.flat(scope);
       res.status(200).json(result);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Lỗi không xác định.";
@@ -60,7 +59,7 @@ export class AdminAnalyticsController {
   ): Promise<void> {
     try {
       const scope: HierarchicalScope = { type: "COURSE", courseId: req.params.courseId };
-      const result = await this.getHierarchicalReportQuery.flat(scope);
+      const result = await this.hierarchicalReportQuery.flat(scope);
       res.status(200).json(result);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Lỗi không xác định.";
@@ -76,7 +75,7 @@ export class AdminAnalyticsController {
     res: Response,
   ): Promise<void> {
     try {
-      const result = await this.getHierarchicalReportQuery.tree();
+      const result = await this.hierarchicalReportQuery.tree();
       res.status(200).json(result);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Lỗi không xác định.";
@@ -109,31 +108,9 @@ export class AdminAnalyticsController {
         return;
       }
 
-      const result = await this.getHierarchicalReportQuery.summary(
+      const result = await this.hierarchicalReportQuery.summary(
         level as HierarchicalLevel,
         unitId,
-      );
-      res.status(200).json(result);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Lỗi không xác định.";
-      res.status(mapErrorToStatus(message)).json({ message });
-    }
-  }
-
-  // GET /analytics/sections/:sectionId/quizzes/:quizId/score-distribution
-  // Permission: VIEW_ANALYTICS
-  // Response 200: ScoreDistributionDTO | null
-  // null = chưa có attempt submitted nào.
-  async getScoreDistribution(
-    req: Request<{ sectionId: string; quizId: string }>,
-    res: Response,
-  ): Promise<void> {
-    try {
-      const result = await this.getScoreDistributionQuery.execute(
-        req.user!.userId,
-        "ADMIN",
-        req.params.quizId,
-        req.params.sectionId,
       );
       res.status(200).json(result);
     } catch (err) {
