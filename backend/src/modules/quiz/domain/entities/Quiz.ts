@@ -102,7 +102,6 @@ export class Quiz {
     maxScore: Points;
     now: Date; 
   }): Quiz {
-    const now = new Date();
     return new Quiz({
       quizId:      uuidv4(),
       teacherId:   params.teacherId,
