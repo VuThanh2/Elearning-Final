@@ -66,7 +66,14 @@ docker cp backend/src/modules/academic/infrastructure/scripts/init.sql  oracle_l
 docker cp backend/src/modules/academic/infrastructure/scripts/seed.sql  oracle_lms:/var/tmp/4_academic_seed.sql
 docker cp backend/src/modules/analytic/infrastructure/scripts/init.sql  oracle_lms:/var/tmp/5_analytic_init.sql
 
-# Bước 2 — Convert CRLF → LF (bắt buộc trên Windows)
+#Xài cái này nếu cái trên bị lỗi:
+docker cp backend/src/modules/identity/infrastructure/scripts/init.sql    oracle_lms:/tmp/identity_init.sql
+docker cp backend/src/modules/identity/infrastructure/scripts/seed.sql    oracle_lms:/tmp/identity_seed.sql
+docker cp backend/src/modules/academic/infrastructure/scripts/init.sql    oracle_lms:/tmp/academic_init.sql
+docker cp backend/src/modules/academic/infrastructure/scripts/seed.sql    oracle_lms:/tmp/academic_seed.sql
+docker cp backend/src/modules/analytic/infrastructure/scripts/init.sql    oracle_lms:/tmp/analytic_init.sql
+
+# Bước 2 — Convert CRLF → LF (bắt buộc trên Windows) (chỉ chạy nếu gặp lỗi ở bước 1)
 docker exec oracle_lms bash -c "
   for f in /var/tmp/1_identity_init.sql /var/tmp/2_identity_seed.sql \
             /var/tmp/3_academic_init.sql /var/tmp/4_academic_seed.sql \
@@ -89,6 +96,17 @@ sqlplus $CONN @/var/tmp/4_academic_seed.sql
 sqlplus $CONN @/var/tmp/5_analytic_init.sql
 exit
 ```
+
+Hoặc các Lệnh này (nếu ở trên bị lỗi):
+sqlplus your_oracle_user/123456@//localhost:1521/XEPDB1 @/tmp/identity_init.sql
+
+sqlplus your_oracle_user/123456@//localhost:1521/XEPDB1 @/tmp/identity_seed.sql
+
+sqlplus your_oracle_user/123456@//localhost:1521/XEPDB1 @/tmp/academic_init.sql
+
+sqlplus your_oracle_user/123456@//localhost:1521/XEPDB1 @/tmp/academic_seed.sql
+
+sqlplus your_oracle_user/123456@//localhost:1521/XEPDB1 @/tmp/analytic_init.sql
 
 Output đúng: chỉ có `Table created.` và `1 row created.` — **không có** `SP2-0734` hay `ORA-XXXXX`.
 
@@ -140,6 +158,7 @@ curl http://localhost:3000/
 ```
 POST /auth/login
   → GET /academic/sections/teaching        # lấy sectionId
+  GET /sections/{sectionId}/quizzes        # xem quiz list
   → POST /quizzes                          # tạo quiz (status: Draft)
   → POST /quizzes/{quizId}/questions       # thêm câu hỏi + options
   → POST /quizzes/{quizId}/publish         # publish
@@ -149,11 +168,10 @@ POST /auth/login
 ```
 POST /auth/login
   → GET /academic/sections/enrolled        # xem section đang học
-  → GET /sections/{sectionId}/quizzes      # xem quiz available  [*]
+  → GET /sections/{sectionId}/quizzes/published  → xem quiz có thể làm bài
   → POST /quizzes/{quizId}/attempts        # bắt đầu làm bài
   → POST /attempts/{attemptId}/submit      # nộp bài → nhận score
 ```
-> [*] Route này hiện thuộc Teacher — Student cần quizId từ Teacher cung cấp hoặc qua UI.
 
 ### Luồng Analytics (sau khi có attempt)
 ```
