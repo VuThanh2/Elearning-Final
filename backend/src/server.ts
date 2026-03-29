@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { EventEmitter } from "events";
-import app              from "./app";
+import app, { notFoundHandler, globalErrorHandler } from "./app";
 
 // Config — DB connections
 import { connectMongo }              from "./config/mongodb";
@@ -141,11 +141,14 @@ const startServer = async (): Promise<void> => {
     ),
   );
 
+  app.use(notFoundHandler);
+  app.use(globalErrorHandler);
+
   // 8. Start HTTP server
   const PORT   = Number(process.env.PORT) || 3000;
   const server = app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
-  });
+  });  
 
   // 9. Graceful shutdown
   // Thứ tự: ngừng HTTP → dừng jobs → unregister listeners → đóng DB

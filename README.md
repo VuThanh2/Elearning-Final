@@ -19,6 +19,9 @@ cp .env.example .env
 Chỉnh `.env` với các giá trị thực:
 ```env
 PORT=3000
+NODE_ENV=development
+ALLOWED_ORIGINS=http://localhost:5173
+
 JWT_SECRET=any_random_string_dai_hon_32_ky_tu
 JWT_EXPIRES_IN=1d
 
