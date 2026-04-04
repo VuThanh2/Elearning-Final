@@ -63,18 +63,18 @@ docker ps   # cả 3 container: mongo_lms, redis_lms, oracle_lms đều Up (heal
 
 ```bash
 # Bước 1 — Copy scripts vào container
-docker cp backend/src/modules/identity/infrastructure/scripts/init.sql  oracle_lms:/var/tmp/1_identity_init.sql
-docker cp backend/src/modules/identity/infrastructure/scripts/seed.sql  oracle_lms:/var/tmp/2_identity_seed.sql
-docker cp backend/src/modules/academic/infrastructure/scripts/init.sql  oracle_lms:/var/tmp/3_academic_init.sql
-docker cp backend/src/modules/academic/infrastructure/scripts/seed.sql  oracle_lms:/var/tmp/4_academic_seed.sql
-docker cp backend/src/modules/analytic/infrastructure/scripts/init.sql  oracle_lms:/var/tmp/5_analytic_init.sql
-
-#Xài cái này nếu cái trên bị lỗi:
 docker cp backend/src/modules/identity/infrastructure/scripts/init.sql    oracle_lms:/tmp/identity_init.sql
 docker cp backend/src/modules/identity/infrastructure/scripts/seed.sql    oracle_lms:/tmp/identity_seed.sql
 docker cp backend/src/modules/academic/infrastructure/scripts/init.sql    oracle_lms:/tmp/academic_init.sql
 docker cp backend/src/modules/academic/infrastructure/scripts/seed.sql    oracle_lms:/tmp/academic_seed.sql
 docker cp backend/src/modules/analytic/infrastructure/scripts/init.sql    oracle_lms:/tmp/analytic_init.sql
+
+#Xài cái này nếu cái trên bị lỗi:
+docker cp backend/src/modules/identity/infrastructure/scripts/init.sql  oracle_lms:/var/tmp/1_identity_init.sql
+docker cp backend/src/modules/identity/infrastructure/scripts/seed.sql  oracle_lms:/var/tmp/2_identity_seed.sql
+docker cp backend/src/modules/academic/infrastructure/scripts/init.sql  oracle_lms:/var/tmp/3_academic_init.sql
+docker cp backend/src/modules/academic/infrastructure/scripts/seed.sql  oracle_lms:/var/tmp/4_academic_seed.sql
+docker cp backend/src/modules/analytic/infrastructure/scripts/init.sql  oracle_lms:/var/tmp/5_analytic_init.sql
 
 # Bước 2 — Convert CRLF → LF (bắt buộc trên Windows) (chỉ chạy nếu gặp lỗi ở bước 1)
 docker exec oracle_lms bash -c "
@@ -86,21 +86,12 @@ docker exec oracle_lms bash -c "
 "
 
 # Bước 3 — Chạy theo thứ tự (FK dependency)
+Tạo 1 BASH TERMINAL
 docker exec -it oracle_lms bash
 ```
 
-Trong container, chạy lần lượt:
+Trong container, chạy lần lượt từng cái:
 ```bash
-CONN="lms_user/lms_pass_123@//localhost:1521/XEPDB1"
-sqlplus $CONN @/var/tmp/1_identity_init.sql
-sqlplus $CONN @/var/tmp/2_identity_seed.sql
-sqlplus $CONN @/var/tmp/3_academic_init.sql
-sqlplus $CONN @/var/tmp/4_academic_seed.sql
-sqlplus $CONN @/var/tmp/5_analytic_init.sql
-exit
-```
-
-Hoặc các Lệnh này (nếu ở trên bị lỗi):
 sqlplus your_oracle_user/123456@//localhost:1521/XEPDB1 @/tmp/identity_init.sql
 
 sqlplus your_oracle_user/123456@//localhost:1521/XEPDB1 @/tmp/identity_seed.sql
@@ -110,6 +101,16 @@ sqlplus your_oracle_user/123456@//localhost:1521/XEPDB1 @/tmp/academic_init.sql
 sqlplus your_oracle_user/123456@//localhost:1521/XEPDB1 @/tmp/academic_seed.sql
 
 sqlplus your_oracle_user/123456@//localhost:1521/XEPDB1 @/tmp/analytic_init.sql
+```
+
+Hoặc các Lệnh này (nếu ở trên bị lỗi):
+CONN="lms_user/lms_pass_123@//localhost:1521/XEPDB1"
+sqlplus $CONN @/var/tmp/1_identity_init.sql
+sqlplus $CONN @/var/tmp/2_identity_seed.sql
+sqlplus $CONN @/var/tmp/3_academic_init.sql
+sqlplus $CONN @/var/tmp/4_academic_seed.sql
+sqlplus $CONN @/var/tmp/5_analytic_init.sql
+exit
 
 Output đúng: chỉ có `Table created.` và `1 row created.` — **không có** `SP2-0734` hay `ORA-XXXXX`.
 
@@ -119,7 +120,7 @@ Output đúng: chỉ có `Table created.` và `1 row created.` — **không có*
 
 ## 4. Chạy Server
 
-```bash
+```Terminal
 cd backend
 npm run dev
 ```
