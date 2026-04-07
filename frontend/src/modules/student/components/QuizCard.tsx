@@ -22,8 +22,14 @@ interface QuizCardProps {
 export default function QuizCard({ quiz, sectionId, onStartQuiz }: QuizCardProps) {
   const isExpired = new Date(quiz.deadlineAt) < new Date();
 
-  console.log('[QuizCard] Rendering quiz:', quiz.title, '| isExpired:', isExpired);
-  console.log('[QuizCard] Props received - quiz.id:', quiz.id, 'sectionId:', sectionId);
+  console.log('[QuizCard] RENDER:', {
+    quizTitle: quiz.title,
+    quizId: quiz.id,
+    isExpired,
+    onStartQuizDefined: !!onStartQuiz,
+    propsCount: Object.keys({ quiz, sectionId, onStartQuiz }).length,
+  });
+  console.log('[QuizCard] Props keys:', Object.keys({ quiz, sectionId, onStartQuiz }));
 
   return (
     <Card sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -98,6 +104,7 @@ export default function QuizCard({ quiz, sectionId, onStartQuiz }: QuizCardProps
       </CardContent>
 
       <CardActions sx={{ pt: 0 }}>
+        {console.log('[QuizCard.CardActions] Rendering actions - onStartQuiz:', !!onStartQuiz) || null}
         <Button
           size="small"
           startIcon={<PlayArrowIcon />}

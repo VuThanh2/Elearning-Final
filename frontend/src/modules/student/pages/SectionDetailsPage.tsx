@@ -130,19 +130,30 @@ export default function SectionDetailsPage() {
 
           {/* Quizzes Grid */}
           <Box>
+            {console.log('[SectionDetailsPage.Grid] Rendering quizzes grid, count:', quizzes.length) || null}
             {quizzes.length === 0 ? (
               <Alert severity="info">No quizzes available in this section yet.</Alert>
             ) : (
               <Grid container spacing={3}>
-                {quizzes.map((quiz) => (
-                  <Grid item xs={12} sm={6} md={4} key={quiz.id}>
-                    <QuizCard
-                      quiz={quiz}
-                      sectionId={sectionId || ''}
-                      onStartQuiz={() => navigate(`/student/quiz/${quiz.id}/attempt`, { state: { sectionId } })}
-                    />
-                  </Grid>
-                ))}
+                {quizzes.map((quiz) => {
+                  console.log('[SectionDetailsPage.Grid.map] Rendering QuizCard for quiz:', {
+                    quizId: quiz.id,
+                    quizTitle: quiz.title,
+                    sectionId: sectionId,
+                  });
+                  return (
+                    <Grid item xs={12} sm={6} md={4} key={quiz.id}>
+                      <QuizCard
+                        quiz={quiz}
+                        sectionId={sectionId || ''}
+                        onStartQuiz={() => {
+                          console.log('[SectionDetailsPage] onStartQuiz clicked for quiz:', quiz.id);
+                          navigate(`/student/quiz/${quiz.id}/attempt`, { state: { sectionId } });
+                        }}
+                      />
+                    </Grid>
+                  );
+                })}
               </Grid>
             )}
           </Box>
