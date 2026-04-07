@@ -57,7 +57,45 @@ export class StudentQuizAnswerQuery {
   // private helpers
   // StudentQuizAnswerView (domain) → StudentQuizAnswerDTO (application)
   private toDTO(view: StudentQuizAnswerView): StudentQuizAnswerDTO {
-    return {
+    console.log('[StudentQuizAnswerQuery] Converting to DTO, answers count:', view.answers.length);
+    console.log('[StudentQuizAnswerQuery] First answer sample:', view.answers[0]);
+
+    const answerReviewData = view.answers.map((a) => ({
+      question: {
+        id: a.questionId,
+        questionId: a.questionId,
+        content: a.questionContent,
+        questionType: 'SINGLE_CHOICE',  // Default, will be overridden by projector
+        answerOptions: [
+          // Reconstruct from denormalized data
+          ...a.correctOptionIds.map((optId, idx) => ({
+            id: optId,
+            optionId: optId,
+            content: a.correctOptionContents[idx] || '',
+            isCorrect: true,
+          })),
+          // Include selected but incorrect options if not in correct list
+          ...a.selectedOptionIds
+            .filter(id => !a.correctOptionIds.includes(id))
+            .map((optId, idx) => ({
+              id: optId,
+              optionId: optId,
+              content: a.selectedOptionContents[idx] || '',
+              isCorrect: false,
+            })),
+        ],
+      },
+      studentAnswer: {
+        questionId: a.questionId,
+        selectedOptionIds: [...a.selectedOptionIds],
+        earnedPoints: a.earnedPoints,
+        isCorrect: a.isCorrect,
+      },
+    }));
+
+    console.log('[StudentQuizAnswerQuery] Built answerReview, count:', answerReviewData.length);
+
+    const dto = {
       attemptId:     view.attemptId,
       quizId:        view.quizId,
       sectionId:     view.sectionId,
@@ -70,39 +108,11 @@ export class StudentQuizAnswerQuery {
       answers:       view.answers.map((a) => this.toAnswerItemDTO(a)),
       // Also provide frontend-compatible structure for QuizResultsPage
       score:         view.totalScore,  // Alias for frontend compatibility
-      answerReview: view.answers.map((a) => ({
-        question: {
-          id: a.questionId,
-          questionId: a.questionId,
-          content: a.questionContent,
-          questionType: 'SINGLE_CHOICE',  // Default, will be overridden by projector
-          answerOptions: [
-            // Reconstruct from denormalized data
-            ...a.correctOptionIds.map((optId, idx) => ({
-              id: optId,
-              optionId: optId,
-              content: a.correctOptionContents[idx] || '',
-              isCorrect: true,
-            })),
-            // Include selected but incorrect options if not in correct list
-            ...a.selectedOptionIds
-              .filter(id => !a.correctOptionIds.includes(id))
-              .map((optId, idx) => ({
-                id: optId,
-                optionId: optId,
-                content: a.selectedOptionContents[idx] || '',
-                isCorrect: false,
-              })),
-          ],
-        },
-        studentAnswer: {
-          questionId: a.questionId,
-          selectedOptionIds: [...a.selectedOptionIds],
-          earnedPoints: a.earnedPoints,
-          isCorrect: a.isCorrect,
-        },
-      })),
+      answerReview:  answerReviewData,
     } as any; // Type assertion due to extra fields added for frontend
+
+    console.log('[StudentQuizAnswerQuery] Final DTO:', dto);
+    return dto;
   }
 
   private toAnswerItemDTO(a: StudentAnswerDetail): AnswerItemDTO {

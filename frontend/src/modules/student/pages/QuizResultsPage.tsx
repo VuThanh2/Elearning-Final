@@ -84,13 +84,17 @@ export default function QuizResultsPage() {
 
         const result = await analyticsService.getAnswerReview(finalAttemptId);
         console.log('[QuizResultsPage] Got answer review for attemptId:', finalAttemptId);
-        console.log('[QuizResultsPage] Result:', { score: result.score, maxScore: result.maxScore, answersCount: result.answerReview?.length || result.answers?.length || 0 });
+        console.log('[QuizResultsPage] Full result:', result);
+        console.log('[QuizResultsPage] Result keys:', Object.keys(result || {}));
+        console.log('[QuizResultsPage] answerReview:', result?.answerReview);
+        console.log('[QuizResultsPage] answers:', result?.answers);
+        console.log('[QuizResultsPage] Result:', { score: result?.score, maxScore: result?.maxScore, answerReviewCount: result?.answerReview?.length || 0, answersCount: result?.answers?.length || 0 });
 
-        setScore(result.score || result.totalScore || 0);
-        setMaxScore(result.maxScore || 0);
+        setScore(result?.score || result?.totalScore || 0);
+        setMaxScore(result?.maxScore || 0);
         // Use answerReview if available (new structure), otherwise fallback to answers
-        const answers = result.answerReview || result.answers || [];
-        console.log('[QuizResultsPage] Setting answers:', answers);
+        const answers = result?.answerReview || result?.answers || [];
+        console.log('[QuizResultsPage] Final answers to set:', answers, 'length:', answers?.length);
         setAnswers(answers);
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : 'Failed to load results';
