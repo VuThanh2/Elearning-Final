@@ -130,7 +130,6 @@ export default function SectionDetailsPage() {
 
           {/* Quizzes Grid */}
           <Box>
-            {console.log('[SectionDetailsPage.Grid] Rendering quizzes grid, count:', quizzes.length) || null}
             {quizzes.length === 0 ? (
               <Alert severity="info">No quizzes available in this section yet.</Alert>
             ) : (

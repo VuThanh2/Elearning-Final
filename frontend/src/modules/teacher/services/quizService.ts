@@ -30,12 +30,12 @@ export const quizService = {
   },
 
   async publishQuiz(quizId: string): Promise<Quiz> {
-    const response = await api.post<any>(`/quizzes/${quizId}/publish`);
+    const response = await api.post<any>(`/quizzes/${quizId}/publish`, {});
     return normalizeQuiz(response.data);
   },
 
   async hideQuiz(quizId: string): Promise<Quiz> {
-    const response = await api.post<any>(`/quizzes/${quizId}/hide`);
+    const response = await api.post<any>(`/quizzes/${quizId}/hide`, {});
     return normalizeQuiz(response.data);
   },
 

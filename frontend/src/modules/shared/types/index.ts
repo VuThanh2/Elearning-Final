@@ -190,6 +190,7 @@ export interface StudentQuizResult {
   quizTitle: string;
   score: number;
   maxScore: number;
+  percentage: number;
   completionRate: number;
   submittedAt: string;
 }

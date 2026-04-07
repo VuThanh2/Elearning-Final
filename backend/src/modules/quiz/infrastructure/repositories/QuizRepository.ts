@@ -88,20 +88,30 @@ export class QuizRepository implements IQuizRepository {
   async save(quiz: Quiz): Promise<void> {
     const doc = QuizMapper.toPersistence(quiz);
 
-    await this.quizModel
-      .replaceOne(
-        { _id: quiz.quizId },
-        doc,
-        { upsert: true }
-      )
-      .exec();
+    try {
+      await this.quizModel
+        .replaceOne(
+          { _id: quiz.quizId },
+          doc,
+          { upsert: true }
+        )
+        .exec();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown database error";
+      throw new Error(`InfrastructureError: Lỗi khi lưu quiz: ${message}`);
+    }
   }
 
   // Xóa quiz (chỉ cho Draft và Hidden status)
   async delete(quizId: string): Promise<void> {
-    await this.quizModel
-      .deleteOne({ _id: quizId })
-      .exec();
+    try {
+      await this.quizModel
+        .deleteOne({ _id: quizId })
+        .exec();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown database error";
+      throw new Error(`InfrastructureError: Lỗi khi xóa quiz: ${message}`);
+    }
   }
 
   // Dùng countDocuments với limit 1 thay vì findOne — không cần load

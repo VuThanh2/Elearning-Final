@@ -57,14 +57,14 @@ export const analyticsService = {
     const response = await api.get<StudentQuizResult[]>(
       `/analytics/sections/${sectionId}/my-results`
     );
-    return response.data;
+    return response.data || [];
   },
 
   async getMyQuizResults(quizId: string): Promise<StudentQuizResult[]> {
     const response = await api.get<StudentQuizResult[]>(
       `/analytics/quizzes/${quizId}/my-results`
     );
-    return response.data;
+    return response.data || [];
   },
 
   async getAnswerReview(attemptId: string): Promise<any> {
@@ -74,14 +74,14 @@ export const analyticsService = {
 
   async getMyAnswerHistory(quizId: string): Promise<any[]> {
     const response = await api.get(`/analytics/quizzes/${quizId}/my-answer-history`);
-    return response.data;
+    return response.data || [];
   },
 
   async getMyClassRanking(sectionId: string): Promise<StudentClassRanking[]> {
     const response = await api.get<StudentClassRanking[]>(
       `/analytics/sections/${sectionId}/my-ranking`
     );
-    return response.data;
+    return response.data || [];
   },
 
   // Admin Analytics

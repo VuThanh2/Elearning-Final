@@ -57,6 +57,11 @@ export class QuizAttemptController {
     res: Response,
   ): Promise<void> {
     try {
+      console.log('[QuizAttemptController.submitAttempt] ENTRY');
+      console.log(`[QuizAttemptController.submitAttempt] attemptId: ${req.params.attemptId}`);
+      console.log(`[QuizAttemptController.submitAttempt] studentId: ${req.user?.userId}`);
+      console.log(`[QuizAttemptController.submitAttempt] req.body:`, JSON.stringify(req.body, null, 2));
+
       const result = await this.submitAttemptUseCase.execute(
         req.user!.userId,
         req.params.attemptId,

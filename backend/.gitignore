@@ -26,7 +26,26 @@ Thumbs.db
  
 # Test coverage
 coverage/
- 
+
+# Lock files (if using different package managers)
+pnpm-lock.yaml
+
+# Editor temp files
+*.swp
+*.swo
+*~
+
+# Build cache
+.eslintcache
+
+# Process files
+*.pid
+*.seed
+*.pid.lock
+
+# General cache
+.cache/
+
 # Temp files
 *.tmp
 *.temp

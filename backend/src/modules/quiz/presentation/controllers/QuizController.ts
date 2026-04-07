@@ -6,6 +6,7 @@ import { PublishQuizUseCase }    from "../../application/use-cases/PublishQuizUs
 import { HideQuizUseCase }       from "../../application/use-cases/HideQuizUseCase";
 import { DeleteQuizUseCase }     from "../../application/use-cases/DeleteQuizUseCase";
 import { GetQuizUseCase, GetQuizListUseCase } from "../../application/use-cases/GetQuizUseCase";
+import { GetQuizForAttemptUseCase } from "../../application/use-cases/GetQuizForAttemptUseCase";
 import { CreateQuizDTO }     from "../../application/dtos/CreateQuizDTO";
 import { UpdateQuizDTO }     from "../../application/dtos/UpdateQuizDTO";
 import { UpdateDeadlineDTO } from "../../application/dtos/UpdateDeadlineDTO";
@@ -22,6 +23,7 @@ export class QuizController {
     private readonly hideQuizUseCase:       HideQuizUseCase,
     private readonly deleteQuizUseCase:     DeleteQuizUseCase,
     private readonly getQuizUseCase:        GetQuizUseCase,
+    private readonly getQuizForAttemptUseCase: GetQuizForAttemptUseCase,
     private readonly getQuizListUseCase:    GetQuizListUseCase,
     private readonly getPublishedQuizListUseCase:   GetPublishedQuizListUseCase,
   ) {}
@@ -103,14 +105,28 @@ export class QuizController {
     res: Response
   ): Promise<void> {
     try {
+      console.log(`[HideQuiz] Starting hide for quiz: ${req.params.quizId}, user: ${req.user?.userId}`);
+
+      // Validate inputs
+      if (!req.user?.userId) {
+        console.error('[HideQuiz] No user ID found in request');
+        res.status(401).json({ message: "Unauthorized: No user ID" });
+        return;
+      }
+
       const result = await this.hideQuizUseCase.execute(
-        req.user!.userId,
+        req.user.userId,
         req.params.quizId,
         req.body.reason
       );
+      console.log(`[HideQuiz] Successfully hidden quiz: ${req.params.quizId}`, result);
       res.status(200).json(result);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Lỗi không xác định.";
+      const stack = err instanceof Error ? err.stack : "";
+      console.error(`[HideQuiz] Error hiding quiz: ${message}`);
+      console.error(`[HideQuiz] Stack: ${stack}`);
+      console.error(`[HideQuiz] Full error:`, err);
       res.status(mapErrorToStatus(message)).json({ message });
     }
   }
@@ -140,6 +156,22 @@ export class QuizController {
     try {
       const result = await this.getQuizUseCase.execute(
         req.user!.userId,
+        req.params.quizId
+      );
+      res.status(200).json(result);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Lỗi không xác định.";
+      res.status(mapErrorToStatus(message)).json({ message });
+    }
+  }
+
+  // GET /quizzes/:quizId/attempt (Student view during attempt)
+  async getQuizForAttempt(
+    req: Request<{ quizId: string }>,
+    res: Response
+  ): Promise<void> {
+    try {
+      const result = await this.getQuizForAttemptUseCase.execute(
         req.params.quizId
       );
       res.status(200).json(result);

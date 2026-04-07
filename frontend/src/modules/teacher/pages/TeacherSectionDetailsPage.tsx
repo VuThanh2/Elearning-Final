@@ -370,15 +370,17 @@ export default function TeacherSectionDetailsPage() {
                         </Button>
                       )}
 
-                      {/* Preview/Edit Button */}
-                      <Button
-                        size="small"
-                        fullWidth
-                        onClick={() => navigate(`/teacher/quiz/${quiz.id}/edit`)}
-                        variant="outlined"
-                      >
-                        Edit/Preview
-                      </Button>
+                      {/* Preview/Edit Button (Published/Hidden only) */}
+                      {(quiz.status === 'PUBLISHED' || quiz.status === 'Published' || quiz.status === 'HIDDEN' || quiz.status === 'Hidden') && (
+                        <Button
+                          size="small"
+                          fullWidth
+                          onClick={() => navigate(`/teacher/quiz/${quiz.id}/edit`)}
+                          variant="outlined"
+                        >
+                          Edit/Preview
+                        </Button>
+                      )}
                     </CardActions>
                   </Card>
                 </Grid>

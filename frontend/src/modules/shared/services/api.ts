@@ -77,6 +77,20 @@ class ApiClient {
           );
         }
 
+        // Handle 409 Conflict - quiz state errors, max attempts reached, etc
+        if (error.response?.status === 409) {
+          const responseData = error.response?.data as any;
+          const message = responseData?.message || 'Cannot perform this action at this time';
+          window.dispatchEvent(
+            new CustomEvent('notification:show', {
+              detail: {
+                message,
+                type: 'error',
+              },
+            })
+          );
+        }
+
         return Promise.reject(error);
       }
     );

@@ -62,7 +62,7 @@ export class QuizAttemptSubmittedProjector {
     }
   }
 
-  // Oracle writes (1 transaction) 
+  // Oracle writes (1 transaction)
   private async writeToOracle(event: AttemptFinalizedEvent, status: "SUBMITTED" | "EXPIRED"): Promise<void> {
     try {
       await Promise.all([
@@ -76,11 +76,13 @@ export class QuizAttemptSubmittedProjector {
       await this.oracleConnection.commit();
     } catch (err) {
       await this.oracleConnection.rollback();
-      throw new Error(
-        `QuizAttemptSubmittedProjector.writeToOracle: ${
+      // Log error but don't throw — analytics failure shouldn't crash quiz submission
+      console.error(
+        `[Analytics] Projection failed for attemptId="${event.attemptId}": ${
           err instanceof Error ? err.message : String(err)
         }`,
       );
+      // Silently continue — student still gets quiz result, just no analytics updated
     }
   }
 
@@ -318,7 +320,15 @@ export class QuizAttemptSubmittedProjector {
              ) WHERE BEST_SCORE >= :rangeStart
                AND BEST_SCORE ${b.inclusive ? '<=' : '<'} :rangeEnd
            ),
-           tgt.PERCENTAGE = tgt.STUDENT_COUNT / NULLIF(
+           tgt.PERCENTAGE = (
+             SELECT COUNT(DISTINCT STUDENT_ID) FROM (
+               SELECT STUDENT_ID, MAX(SCORE) AS BEST_SCORE
+               FROM   ANALYTICS_STUDENT_QUIZ_RESULT
+               WHERE  QUIZ_ID = :quizId AND SECTION_ID = :sectionId
+               GROUP  BY STUDENT_ID
+             ) WHERE BEST_SCORE >= :rangeStart
+               AND BEST_SCORE ${b.inclusive ? '<=' : '<'} :rangeEnd
+           ) / NULLIF(
              (SELECT TOTAL_RANKED_STUDENTS FROM ANALYTICS_SCORE_DISTRIBUTION
               WHERE QUIZ_ID = :quizId AND SECTION_ID = :sectionId), 0
            )
@@ -486,16 +496,24 @@ export class QuizAttemptSubmittedProjector {
 
   // MongoDB writes
   private async writeStudentQuizAnswer(e: AttemptFinalizedEvent, status: "SUBMITTED" | "EXPIRED"): Promise<void> {
+    const percentage = e.maxScore > 0
+      ? Math.round((e.score / e.maxScore) * 10000) / 10000
+      : 0;
+
     await this.studentQuizAnswerModel.replaceOne(
       { _id: e.attemptId },
       {
         _id:           e.attemptId,
         quizId:        e.quizId,
+        quizTitle:     e.quizTitle,
         studentId:     e.studentId,
         sectionId:     e.sectionId,
-        totalScore:    e.score,
+        score:         e.score,
         maxScore:      e.maxScore,
+        percentage:    percentage,
+        startedAt:     e.startedAt,
         submittedAt:   e.occurredAt,
+        durationSeconds: Math.floor((e.occurredAt.getTime() - e.startedAt.getTime()) / 1000),
         attemptNumber: e.attemptNumber,
         status,
         answers: e.answers.map((a) => ({

@@ -196,122 +196,187 @@ export default function QuizResultsPage() {
           {answers.length === 0 ? (
             <Alert severity="info">No answers to review</Alert>
           ) : (
-            <Grid container spacing={3}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               {answers
                 .filter((review) => review.question) // Filter out reviews without question
                 .map((review, index) => (
                   review.question && (
-                    <Grid item xs={12} key={review.question.id}>
-                      <Card>
-                        <CardContent>
-                          {/* Question Number and Content */}
-                          <Box sx={{ mb: 2 }}>
-                            <Typography variant="caption" sx={{ color: 'textSecondary' }}>
-                              Question {index + 1}
-                            </Typography>
-                            <Typography variant="h6" sx={{ fontWeight: 600, mt: 0.5 }}>
-                              {review.question.content}
-                            </Typography>
-                          </Box>
-
-                          {/* Student Answer */}
-                          <Box sx={{ mb: 2 }}>
-                            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-                              Your Answer:
-                            </Typography>
-                            {review.studentAnswer.selectedOptionIds.length === 0 ? (
-                              <Typography variant="body2" sx={{ color: 'warning.main' }}>
-                                ⚠️ No answer selected
-                              </Typography>
-                            ) : (
-                              review.question.answerOptions &&
-                              review.question.answerOptions
-                                .filter((opt) =>
-                                  review.studentAnswer.selectedOptionIds.includes(opt.id)
-                                )
-                                .map((opt) => (
-                              <Typography
-                                key={opt.id}
-                                variant="body2"
-                                sx={{
-                                  p: 1,
-                                  mb: 0.5,
-                                  backgroundColor: review.studentAnswer.isCorrect
-                                    ? '#e8f5e9'
-                                    : '#ffebee',
-                                  borderLeft: `4px solid ${
-                                    review.studentAnswer.isCorrect ? '#4caf50' : '#f44336'
-                                  }`,
-                                  borderRadius: '0 4px 4px 0',
-                                }}
-                              >
-                                {opt.content}
-                              </Typography>
-                            ))
-                        )}
+                    <Card
+                      key={review.question.id}
+                      sx={{
+                        padding: 3,
+                        borderLeft: `5px solid ${
+                          review.studentAnswer.isCorrect ? '#4caf50' : '#f44336'
+                        }`,
+                        backgroundColor: review.studentAnswer.isCorrect ? '#f1f8f6' : '#fef5f5',
+                      }}
+                    >
+                      {/* Question Number and Content */}
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="caption" sx={{ color: 'textSecondary', fontWeight: 600 }}>
+                          Question {index + 1}
+                        </Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 700, mt: 0.5, mb: 1 }}>
+                          {review.question.content}
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          <Chip
+                            icon={
+                              review.studentAnswer.isCorrect ? (
+                                <CheckCircleIcon />
+                              ) : (
+                                <CancelIcon />
+                              )
+                            }
+                            label={review.studentAnswer.isCorrect ? 'Correct ✓' : 'Incorrect ✗'}
+                            color={review.studentAnswer.isCorrect ? 'success' : 'error'}
+                            size="small"
+                          />
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              fontWeight: 700,
+                              color: review.studentAnswer.isCorrect ? 'success.main' : 'error.main',
+                            }}
+                          >
+                            {review.studentAnswer.earnedPoints}/{review.question.answerOptions?.length || 0} points
+                          </Typography>
+                        </Box>
                       </Box>
 
-                      {/* Correct Answer (if student was wrong) */}
-                      {!review.studentAnswer.isCorrect && review.question.answerOptions && (
-                        <Box sx={{ mb: 2 }}>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-                            ✓ Correct Answer:
-                          </Typography>
-                          {review.question.answerOptions
-                            .filter((opt) => opt.isCorrect)
-                            .map((opt) => (
-                              <Typography
-                                key={opt.id}
-                                variant="body2"
-                                sx={{
-                                  p: 1,
-                                  mb: 0.5,
-                                  backgroundColor: '#e8f5e9',
-                                  borderLeft: '4px solid #4caf50',
-                                  borderRadius: '0 4px 4px 0',
-                                }}
-                              >
-                                {opt.content}
-                              </Typography>
-                            ))}
-                        </Box>
-                      )}
-
-                      {/* Result Badge */}
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Chip
-                          icon={
-                            review.studentAnswer.isCorrect ? (
-                              <CheckCircleIcon />
-                            ) : (
-                              <CancelIcon />
-                            )
-                          }
-                          label={review.studentAnswer.isCorrect ? 'Correct' : 'Incorrect'}
-                          color={review.studentAnswer.isCorrect ? 'success' : 'error'}
-                          variant="outlined"
-                        />
+                      {/* All Answer Options (Form-like display) */}
+                      <Box sx={{ mb: 3 }}>
                         <Typography
                           variant="subtitle2"
                           sx={{
-                            fontWeight: 700,
-                            color: review.studentAnswer.isCorrect ? 'success.main' : 'error.main',
+                            fontWeight: 600,
+                            mb: 1.5,
+                            color: 'textSecondary',
+                            textTransform: 'uppercase',
+                            fontSize: '0.8rem',
                           }}
                         >
-                          {review.question.answerOptions && formatters.formatPercentage(
-                            (review.studentAnswer.earnedPoints /
-                              review.question.answerOptions.length) *
-                              100,
-                            0
-                          )}
+                          Options
                         </Typography>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                          {review.question.answerOptions?.map((opt) => {
+                            const isSelected = review.studentAnswer.selectedOptionIds.includes(opt.id);
+                            const isCorrect = opt.isCorrect;
+                            const showAsCorrect = isCorrect && review.studentAnswer.isCorrect;
+                            const showAsIncorrect = isSelected && !isCorrect && !review.studentAnswer.isCorrect;
+
+                            return (
+                              <Box
+                                key={opt.id}
+                                sx={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 2,
+                                  p: 1.5,
+                                  border: '1px solid',
+                                  borderColor: showAsCorrect ? '#4caf50' : showAsIncorrect ? '#f44336' : '#e0e0e0',
+                                  backgroundColor: showAsCorrect
+                                    ? '#e8f5e9'
+                                    : showAsIncorrect
+                                    ? '#ffebee'
+                                    : isCorrect && !review.studentAnswer.isCorrect
+                                    ? '#f1f8f6'
+                                    : '#fafafa',
+                                  borderRadius: 1,
+                                  cursor: 'default',
+                                }}
+                              >
+                                {/* Checkbox/Radio indicator */}
+                                <Box
+                                  sx={{
+                                    width: 20,
+                                    height: 20,
+                                    border: '2px solid',
+                                    borderColor: showAsCorrect
+                                      ? '#4caf50'
+                                      : showAsIncorrect
+                                      ? '#f44336'
+                                      : '#bdbdbd',
+                                    borderRadius: review.question.questionType === 'SINGLE_CHOICE' ? '50%' : '4px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    backgroundColor: isSelected ? '#1976d2' : 'transparent',
+                                    color: 'white',
+                                    fontSize: '12px',
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  {isSelected && (isCorrect ? '✓' : isCorrect === false ? '✗' : '✓')}
+                                </Box>
+
+                                {/* Option content */}
+                                <Typography
+                                  variant="body2"
+                                  sx={{
+                                    flex: 1,
+                                    fontWeight: isSelected ? 600 : 500,
+                                    color: showAsCorrect
+                                      ? '#2e7d32'
+                                      : showAsIncorrect
+                                      ? '#c62828'
+                                      : 'textPrimary',
+                                  }}
+                                >
+                                  {opt.content}
+                                </Typography>
+
+                                {/* Status indicator */}
+                                {isSelected && (
+                                  <Typography
+                                    variant="caption"
+                                    sx={{
+                                      fontWeight: 700,
+                                      color: 'textSecondary',
+                                      textTransform: 'uppercase',
+                                      fontSize: '0.7rem',
+                                    }}
+                                  >
+                                    {review.studentAnswer.isCorrect ? 'YOUR ANSWER' : 'YOUR ANSWER (WRONG)'}
+                                  </Typography>
+                                )}
+
+                                {!isSelected && isCorrect && !review.studentAnswer.isCorrect && (
+                                  <Typography
+                                    variant="caption"
+                                    sx={{
+                                      fontWeight: 700,
+                                      color: '#2e7d32',
+                                      textTransform: 'uppercase',
+                                      fontSize: '0.7rem',
+                                    }}
+                                  >
+                                    CORRECT ANSWER
+                                  </Typography>
+                                )}
+                              </Box>
+                            );
+                          })}
+                        </Box>
                       </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
+
+                      {/* Explanation or summary */}
+                      {review.studentAnswer.isCorrect && (
+                        <Alert severity="success" sx={{ mt: 2 }}>
+                          Great job! You selected the correct answer(s).
+                        </Alert>
+                      )}
+                      {!review.studentAnswer.isCorrect && (
+                        <Alert severity="error" sx={{ mt: 2 }}>
+                          This answer is incorrect. Review the correct answer(s) above and try again on your next attempt.
+                        </Alert>
+                      )}
+                    </Card>
                   )
               ))}
-            </Grid>
+            </Box>
           )}
 
           {/* Action Buttons */}

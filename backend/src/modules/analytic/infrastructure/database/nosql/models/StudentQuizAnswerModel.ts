@@ -30,11 +30,15 @@ export interface IStudentAnswerDetailDocument {
 export interface IStudentQuizAnswerDocument extends Document<string> {
   _id:            string; // attemptId
   quizId:         string;
+  quizTitle:      string;
   studentId:      string;
   sectionId:      string;
-  totalScore:     number;
+  score:          number;
   maxScore:       number;
+  percentage:     number;
+  startedAt:      Date;
   submittedAt:    Date;
+  durationSeconds: number;
   attemptNumber:  number;
   status:         "SUBMITTED" | "EXPIRED";
   answers:        IStudentAnswerDetailDocument[];
@@ -62,11 +66,15 @@ const StudentQuizAnswerSchema = new Schema<IStudentQuizAnswerDocument>(
   {
     _id:           { type: String, required: true }, // attemptId
     quizId:        { type: String, required: true },
+    quizTitle:     { type: String, required: true },
     studentId:     { type: String, required: true },
     sectionId:     { type: String, required: true },
-    totalScore:    { type: Number, required: true, min: 0 },
+    score:         { type: Number, required: true, min: 0 },
     maxScore:      { type: Number, required: true, min: 0 },
+    percentage:    { type: Number, required: true, min: 0, max: 1 },
+    startedAt:     { type: Date,   required: true },
     submittedAt:   { type: Date,   required: true },
+    durationSeconds: { type: Number, required: true, min: 0 },
     attemptNumber: { type: Number, required: true, min: 1 },
 
     status: {

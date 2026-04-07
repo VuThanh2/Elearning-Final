@@ -24,6 +24,11 @@ export const quizService = {
     return normalizeQuiz(response.data);
   },
 
+  async getQuizForAttempt(quizId: string): Promise<Quiz> {
+    const response = await api.get<any>(`/quizzes/${quizId}/attempt`);
+    return normalizeQuiz(response.data);
+  },
+
   async updateQuiz(quizId: string, data: UpdateQuizRequest): Promise<Quiz> {
     const response = await api.patch<any>(`/quizzes/${quizId}`, data);
     return normalizeQuiz(response.data);

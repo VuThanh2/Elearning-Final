@@ -106,7 +106,12 @@ export default function StudentDashboard() {
                         >
                           View Quizzes
                         </Button>
-                        <Button size="small">View Results</Button>
+                        <Button
+                          size="small"
+                          onClick={() => navigate(`/student/sections/${section.sectionId}/analytics`)}
+                        >
+                          Analytics
+                        </Button>
                       </CardActions>
                     </Card>
                   </Grid>

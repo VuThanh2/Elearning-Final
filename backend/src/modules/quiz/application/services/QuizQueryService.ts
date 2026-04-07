@@ -107,15 +107,34 @@ export class QuizQueryService implements IQuizQueryService {
 
     const pointsPerQuestion = quiz.maxScore.value / totalQuestions;
 
+    console.log('[QuizQueryService.getQuizGradingData] Starting grading data extraction');
+    console.log(`[QuizQueryService.getQuizGradingData] Quiz: ${quizId}, Total Questions: ${totalQuestions}`);
+
+    const gradingQuestions = questions.map((q) => {
+      const correctOptions = [...q.correctOptions];
+      const correctOptionIds = correctOptions.map((opt) => opt.optionId);
+
+      console.log(`[QuizQueryService.getQuizGradingData] Question ${q.questionId}:`);
+      console.log(`  Total answerOptions: ${[...q.answerOptions].length}`);
+      console.log(`  Correct options count: ${correctOptionIds.length}`);
+      console.log(`  All options:`);
+      [...q.answerOptions].forEach((opt, idx) => {
+        console.log(`    [${idx}] ID: ${opt.optionId}, Content: ${opt.content}, isCorrect: ${opt.isCorrect}`);
+      });
+      console.log(`  Extracted correctOptionIds: [${correctOptionIds.join(', ')}]`);
+
+      return {
+        questionId:       q.questionId,
+        correctOptionIds,
+      };
+    });
+
     return {
       quizId:           quiz.quizId,
       maxScore:         quiz.maxScore.value,
       timeLimitMs:       quiz.timeLimit.minutes * 60_000,
       deadlineAt:        quiz.deadline.value,
-      questions:        questions.map((q) => ({
-        questionId:       q.questionId,
-        correctOptionIds: [...q.correctOptions].map((opt) => opt.optionId),
-      })),
+      questions:        gradingQuestions,
       pointsPerQuestion,
     };
   }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Box,
@@ -22,7 +22,11 @@ import QuestionDisplay from '../components/QuestionDisplay';
 export default function QuizAttemptPage() {
   const { quizId } = useParams<{ quizId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { showNotification } = useNotification();
+
+  // Get sectionId from navigation state (passed from SectionDetailsPage)
+  const sectionId = (location.state as any)?.sectionId || null;
 
   // State
   const [quiz, setQuiz] = useState<Quiz | null>(null);
@@ -46,13 +50,18 @@ export default function QuizAttemptPage() {
 
       try {
         setLoading(true);
+        console.log('[QuizAttempt] Starting initialization for quizId:', quizId);
 
-        // Fetch quiz
-        const quizData = await quizService.getQuiz(quizId);
+        // Fetch quiz using student-accessible endpoint
+        console.log('[QuizAttempt] Fetching quiz from /quizzes/:quizId/attempt...');
+        const quizData = await quizService.getQuizForAttempt(quizId);
+        console.log('[QuizAttempt] Quiz data received:', quizData);
         setQuiz(quizData);
 
         // Start attempt
+        console.log('[QuizAttempt] Starting attempt...');
         const attemptData = await attemptService.startAttempt(quizId);
+        console.log('[QuizAttempt] Attempt started:', attemptData);
         setAttemptId(attemptData.id);
 
         // Initialize empty answers map
@@ -61,8 +70,11 @@ export default function QuizAttemptPage() {
           answersMap.set(q.id, []);
         });
         setAnswers(answersMap);
+        console.log('[QuizAttempt] Initialization complete');
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to start quiz');
+        const errorMsg = err instanceof Error ? err.message : 'Failed to start quiz';
+        console.error('[QuizAttempt] Error during initialization:', err);
+        setError(errorMsg);
       } finally {
         setLoading(false);
       }
@@ -112,15 +124,32 @@ export default function QuizAttemptPage() {
         })),
       };
 
+      console.log('[QuizAttempt] Submitting answers (expanded):', JSON.stringify(submitData, null, 2));
+
+      // Log each question with all its options and which one is correct
+      console.log('[QuizAttempt] Question details:');
+      quiz.questions.forEach((q, idx) => {
+        console.log(`  Q${idx + 1}: ${q.content}`);
+        console.log(`    ID: ${q.id}`);
+        console.log(`    Your selection: ${answers.get(q.id)?.join(', ') || '(none)'}`);
+        q.answerOptions.forEach((opt, optIdx) => {
+          const isSelected = answers.get(q.id)?.includes(opt.id) ? '✓ SELECTED' : '';
+          const isCorrect = opt.isCorrect ? '✓✓ CORRECT' : '';
+          console.log(`      Opt ${optIdx + 1}: "${opt.content}" (ID: ${opt.id}) ${isCorrect} ${isSelected}`);
+        });
+      });
+
       // Submit attempt
-      await attemptService.submitAttempt(attemptId, submitData);
+      const submitResponse = await attemptService.submitAttempt(attemptId, submitData);
 
       showNotification('Quiz submitted successfully!', 'success');
       setShowSubmitConfirm(false);
 
-      // Redirect to results
+      // Redirect to results with submission data
       setTimeout(() => {
-        navigate(`/student/quiz/${quizId}/results/${attemptId}`);
+        navigate(`/student/quiz/${quizId}/results/${attemptId}`, {
+          state: { submissionResponse: submitResponse, sectionId }
+        });
       }, 500);
     } catch (err) {
       showNotification(
@@ -132,6 +161,7 @@ export default function QuizAttemptPage() {
   };
 
   if (loading) {
+    console.log('[QuizAttempt] Still loading...');
     return (
       <>
         <Navbar />
@@ -144,7 +174,10 @@ export default function QuizAttemptPage() {
     );
   }
 
+  console.log('[QuizAttempt] Render state:', { quiz: !!quiz, attemptId: !!attemptId, error, loading });
+
   if (!quiz || !attemptId) {
+    console.error('[QuizAttempt] Missing quiz or attemptId:', { quiz: !!quiz, attemptId: !!attemptId, error });
     return (
       <>
         <Navbar />
@@ -160,8 +193,27 @@ export default function QuizAttemptPage() {
     );
   }
 
+  console.log('[QuizAttempt] Rendering quiz content. currentQuestionIndex:', currentQuestionIndex, 'Total questions:', quiz.questions.length);
+
   const currentQuestion = quiz.questions[currentQuestionIndex];
   const timeWarnColors = timeExpired ? '#d32f2f' : 'inherit';
+
+  if (!currentQuestion) {
+    console.error('[QuizAttempt] Current question not found!', { currentQuestionIndex, totalQuestions: quiz.questions.length });
+    return (
+      <>
+        <Navbar />
+        <Container maxWidth="lg">
+          <Box sx={{ py: 4 }}>
+            <Alert severity="error">Question not found. Please try again.</Alert>
+            <Button onClick={() => navigate(-1)} sx={{ mt: 2 }}>
+              Go Back
+            </Button>
+          </Box>
+        </Container>
+      </>
+    );
+  }
 
   return (
     <>
