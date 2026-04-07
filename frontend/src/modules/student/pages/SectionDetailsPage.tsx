@@ -32,6 +32,8 @@ export default function SectionDetailsPage() {
 
       try {
         setLoading(true);
+        console.log('[SectionDetailsPage] ENTRY: sectionId=', sectionId);
+
         // Get section from enrolled sections
         const sections = await academicService.getEnrolledSections();
         const foundSection = sections.find((s) => s.sectionId === sectionId);
@@ -39,10 +41,12 @@ export default function SectionDetailsPage() {
           setError('Section not found');
           return;
         }
+        console.log('[SectionDetailsPage] Found section:', foundSection);
         setSection(foundSection);
 
         // Get published quizzes for section
         const quizzesData = await quizService.getPublishedQuizzes(sectionId);
+        console.log('[SectionDetailsPage] Fetched quizzes:', quizzesData.length, 'quizzes');
         setQuizzes(quizzesData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load section');

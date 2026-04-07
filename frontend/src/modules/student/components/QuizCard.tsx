@@ -22,6 +22,9 @@ interface QuizCardProps {
 export default function QuizCard({ quiz, sectionId, onStartQuiz }: QuizCardProps) {
   const isExpired = new Date(quiz.deadlineAt) < new Date();
 
+  console.log('[QuizCard] Rendering quiz:', quiz.title, '| isExpired:', isExpired);
+  console.log('[QuizCard] Props received - quiz.id:', quiz.id, 'sectionId:', sectionId);
+
   return (
     <Card sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <CardContent sx={{ flexGrow: 1 }}>

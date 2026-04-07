@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Box,
@@ -29,8 +29,12 @@ interface AnswerReview {
 export default function QuizResultsPage() {
   const { quizId, attemptId } = useParams<{ quizId: string; attemptId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { state } = useAuth();
   const { showNotification } = useNotification();
+
+  // Get sectionId from navigation state
+  const sectionId = (location.state as any)?.sectionId || null;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,24 +44,62 @@ export default function QuizResultsPage() {
 
   useEffect(() => {
     const fetchResults = async () => {
-      if (!attemptId) return;
+      if (!attemptId && !quizId) return;
 
       try {
         setLoading(true);
-        const result = await analyticsService.getAnswerReview(attemptId);
+        console.log('[QuizResultsPage] ENTRY: attemptId=', attemptId, 'quizId=', quizId, 'sectionId=', sectionId);
+
+        let finalAttemptId = attemptId;
+
+        // If no attemptId, fetch the latest attempt for this quiz
+        if (!finalAttemptId && quizId) {
+          console.log('[QuizResultsPage] No attemptId, fetching latest attempt for quizId=', quizId);
+          const results = await analyticsService.getMyQuizResults(quizId);
+          if (results.length === 0) {
+            setError('No attempts found for this quiz');
+            return;
+          }
+          // Use the latest attempt
+          finalAttemptId = results[0].attemptId;
+          console.log('[QuizResultsPage] Using latest attempt:', finalAttemptId);
+        }
+
+        if (!finalAttemptId) {
+          setError('Unable to determine attempt');
+          return;
+        }
+
+        // Check if submission response was passed via navigation state
+        const submissionResponse = (location.state as any)?.submissionResponse;
+        if (submissionResponse) {
+          console.log('[QuizResultsPage] Using submission response from state');
+          // Use the immediate submission response (most accurate)
+          setScore(submissionResponse.score || 0);
+          setMaxScore(submissionResponse.maxScore || 0);
+          setAnswers(submissionResponse.answers || []);
+          setLoading(false);
+          return;
+        }
+
+        const result = await analyticsService.getAnswerReview(finalAttemptId);
+        console.log('[QuizResultsPage] Got answer review for attemptId:', finalAttemptId);
+        console.log('[QuizResultsPage] Result:', { score: result.score, maxScore: result.maxScore, answersCount: result.answers?.length || 0 });
 
         setScore(result.score || 0);
         setMaxScore(result.maxScore || 0);
         setAnswers(result.answers || []);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load results');
+        const errMsg = err instanceof Error ? err.message : 'Failed to load results';
+        console.error('[QuizResultsPage] Error loading results:', errMsg);
+        setError(errMsg);
       } finally {
         setLoading(false);
       }
     };
 
     fetchResults();
-  }, [attemptId]);
+  }, [attemptId, quizId, location.state]);
 
   if (loading) {
     return (
@@ -83,10 +125,20 @@ export default function QuizResultsPage() {
           {/* Back Button */}
           <Button
             startIcon={<ArrowBackIcon />}
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              console.log('[QuizResultsPage] Back button clicked');
+              console.log('[QuizResultsPage] sectionId:', sectionId);
+              if (sectionId) {
+                console.log('[QuizResultsPage] Navigating to analytics:', `/student/sections/${sectionId}/analytics`);
+                navigate(`/student/sections/${sectionId}/analytics`);
+              } else {
+                console.log('[QuizResultsPage] No sectionId, using navigate(-1)');
+                navigate(-1);
+              }
+            }}
             sx={{ mb: 3 }}
           >
-            Back
+            Back to Analytics
           </Button>
 
           {error && (
@@ -145,35 +197,39 @@ export default function QuizResultsPage() {
             <Alert severity="info">No answers to review</Alert>
           ) : (
             <Grid container spacing={3}>
-              {answers.map((review, index) => (
-                <Grid item xs={12} key={review.question.id}>
-                  <Card>
-                    <CardContent>
-                      {/* Question Number and Content */}
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="caption" sx={{ color: 'textSecondary' }}>
-                          Question {index + 1}
-                        </Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 600, mt: 0.5 }}>
-                          {review.question.content}
-                        </Typography>
-                      </Box>
+              {answers
+                .filter((review) => review.question) // Filter out reviews without question
+                .map((review, index) => (
+                  review.question && (
+                    <Grid item xs={12} key={review.question.id}>
+                      <Card>
+                        <CardContent>
+                          {/* Question Number and Content */}
+                          <Box sx={{ mb: 2 }}>
+                            <Typography variant="caption" sx={{ color: 'textSecondary' }}>
+                              Question {index + 1}
+                            </Typography>
+                            <Typography variant="h6" sx={{ fontWeight: 600, mt: 0.5 }}>
+                              {review.question.content}
+                            </Typography>
+                          </Box>
 
-                      {/* Student Answer */}
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-                          Your Answer:
-                        </Typography>
-                        {review.studentAnswer.selectedOptionIds.length === 0 ? (
-                          <Typography variant="body2" sx={{ color: 'warning.main' }}>
-                            ⚠️ No answer selected
-                          </Typography>
-                        ) : (
-                          review.question.answerOptions
-                            .filter((opt) =>
-                              review.studentAnswer.selectedOptionIds.includes(opt.id)
-                            )
-                            .map((opt) => (
+                          {/* Student Answer */}
+                          <Box sx={{ mb: 2 }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                              Your Answer:
+                            </Typography>
+                            {review.studentAnswer.selectedOptionIds.length === 0 ? (
+                              <Typography variant="body2" sx={{ color: 'warning.main' }}>
+                                ⚠️ No answer selected
+                              </Typography>
+                            ) : (
+                              review.question.answerOptions &&
+                              review.question.answerOptions
+                                .filter((opt) =>
+                                  review.studentAnswer.selectedOptionIds.includes(opt.id)
+                                )
+                                .map((opt) => (
                               <Typography
                                 key={opt.id}
                                 variant="body2"
@@ -196,7 +252,7 @@ export default function QuizResultsPage() {
                       </Box>
 
                       {/* Correct Answer (if student was wrong) */}
-                      {!review.studentAnswer.isCorrect && (
+                      {!review.studentAnswer.isCorrect && review.question.answerOptions && (
                         <Box sx={{ mb: 2 }}>
                           <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
                             ✓ Correct Answer:
@@ -242,7 +298,7 @@ export default function QuizResultsPage() {
                             color: review.studentAnswer.isCorrect ? 'success.main' : 'error.main',
                           }}
                         >
-                          {formatters.formatPercentage(
+                          {review.question.answerOptions && formatters.formatPercentage(
                             (review.studentAnswer.earnedPoints /
                               review.question.answerOptions.length) *
                               100,
@@ -253,6 +309,7 @@ export default function QuizResultsPage() {
                     </CardContent>
                   </Card>
                 </Grid>
+                  )
               ))}
             </Grid>
           )}

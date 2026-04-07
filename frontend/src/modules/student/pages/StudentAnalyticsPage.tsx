@@ -307,7 +307,7 @@ export default function StudentAnalyticsPage() {
 
           {/* My Results */}
           <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>
-            My Results
+            My Results (Click to view details)
           </Typography>
           <TableContainer component={Paper}>
             <Table>
@@ -336,35 +336,51 @@ export default function StudentAnalyticsPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  myResults.map((result) => (
-                    <TableRow
-                      key={result.attemptId}
-                      onClick={() => navigate(`/student/quiz/${result.quizId}/results/${result.attemptId}`, { state: { sectionId } })}
-                      sx={{
-                        cursor: 'pointer',
-                        '&:hover': { backgroundColor: '#f5f5f5' }
-                      }}
-                    >
-                      <TableCell>{result.quizTitle}</TableCell>
-                      <TableCell align="right">
-                        {formatters.formatScore(result.score, result.maxScore)}
-                      </TableCell>
-                      <TableCell align="right">
-                        {formatters.formatPercentage(result.percentage || 0, 1)}
-                      </TableCell>
-                      <TableCell align="right">
-                        <Chip
-                          label={(result.percentage || 0) >= 60 ? 'Passed' : 'Failed'}
-                          color={(result.percentage || 0) >= 60 ? 'success' : 'error'}
-                          size="small"
-                          variant="outlined"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {formatters.formatDate(new Date(result.submittedAt))}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  myResults.map((result) => {
+                    console.log('[StudentAnalyticsPage] Rendering result row:', {
+                      quizTitle: result.quizTitle,
+                      score: result.score,
+                      maxScore: result.maxScore,
+                      attemptId: result.attemptId,
+                      quizId: result.quizId,
+                    });
+                    return (
+                      <TableRow
+                        key={result.attemptId}
+                        onClick={() => {
+                          console.log('[StudentAnalyticsPage] Clicked result row:', {
+                            quizId: result.quizId,
+                            attemptId: result.attemptId,
+                            sectionId: sectionId,
+                          });
+                          navigate(`/student/quiz/${result.quizId}/results/${result.attemptId}`, { state: { sectionId } });
+                        }}
+                        sx={{
+                          cursor: 'pointer',
+                          '&:hover': { backgroundColor: '#f5f5f5' }
+                        }}
+                      >
+                        <TableCell>{result.quizTitle}</TableCell>
+                        <TableCell align="right">
+                          {formatters.formatScore(result.score, result.maxScore)}
+                        </TableCell>
+                        <TableCell align="right">
+                          {formatters.formatPercentage(result.percentage || 0, 1)}
+                        </TableCell>
+                        <TableCell align="right">
+                          <Chip
+                            label={(result.percentage || 0) >= 60 ? 'Passed' : 'Failed'}
+                            color={(result.percentage || 0) >= 60 ? 'success' : 'error'}
+                            size="small"
+                            variant="outlined"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {formatters.formatDate(new Date(result.submittedAt))}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
