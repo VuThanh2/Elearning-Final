@@ -33,7 +33,7 @@ export class StudentQuizAnswerMapper {
       quizId:        doc.quizId,
       studentId:     doc.studentId,
       sectionId:     doc.sectionId,
-      totalScore:    doc.totalScore,
+      totalScore:    doc.score,
       maxScore:      doc.maxScore,
       submittedAt:   doc.submittedAt,
       attemptNumber: doc.attemptNumber,
