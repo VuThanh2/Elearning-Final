@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
   Box,
@@ -17,7 +17,9 @@ import {
   Alert,
   Paper,
   Chip,
+  Button,
 } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useAuth, Navbar } from '../../shared';
 import { analyticsService } from '../services/analyticsService';
 import { StudentClassRanking, StudentQuizResult } from '../../shared/types';
@@ -25,6 +27,7 @@ import { formatters } from '../../shared/utils/formatters';
 
 export default function StudentAnalyticsPage() {
   const { sectionId } = useParams<{ sectionId: string }>();
+  const navigate = useNavigate();
   const { state } = useAuth();
 
   const [loading, setLoading] = useState(true);
@@ -44,7 +47,10 @@ export default function StudentAnalyticsPage() {
 
   useEffect(() => {
     const fetchAnalytics = async () => {
-      if (!sectionId) return;
+      if (!sectionId) {
+        setError('Section ID not found');
+        return;
+      }
 
       try {
         setLoading(true);
@@ -63,10 +69,10 @@ export default function StudentAnalyticsPage() {
 
         // Calculate stats
         const completedCount = resultsData.length;
-        const passedCount = resultsData.filter((r) => r.completionRate >= 60).length;
+        const passedCount = resultsData.filter((r) => (r.percentage || 0) >= 60).length;
         const avgScore =
           completedCount > 0
-            ? resultsData.reduce((sum, r) => sum + (r.score / r.maxScore) * 100, 0) /
+            ? resultsData.reduce((sum, r) => sum + ((r.percentage || 0) / 100) * (r.score || 0), 0) /
               completedCount
             : 0;
 
@@ -78,7 +84,8 @@ export default function StudentAnalyticsPage() {
           passRate: (passedCount / (completedCount || 1)) * 100,
         });
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load analytics');
+        const errorMsg = err instanceof Error ? err.message : 'Failed to load analytics';
+        setError(errorMsg);
       } finally {
         setLoading(false);
       }
@@ -105,14 +112,23 @@ export default function StudentAnalyticsPage() {
       <Navbar />
       <Container maxWidth="lg">
         <Box sx={{ py: 4 }}>
-          {/* Header */}
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="h4" sx={{ mb: 1, fontWeight: 700 }}>
-              My Analytics
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-              Performance overview and class ranking
-            </Typography>
+          {/* Header with Back Button */}
+          <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Button
+              startIcon={<ArrowBackIcon />}
+              onClick={() => navigate(-1)}
+              variant="outlined"
+            >
+              Back
+            </Button>
+            <Box>
+              <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                My Analytics
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                Performance overview and class ranking
+              </Typography>
+            </Box>
           </Box>
 
           {error && (
@@ -237,7 +253,7 @@ export default function StudentAnalyticsPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {rankings.length === 0 ? (
+                {rankings && rankings.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} align="center">
                       <Typography variant="body2" color="textSecondary">
@@ -246,7 +262,7 @@ export default function StudentAnalyticsPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  rankings.map((ranking) => (
+                  rankings?.map((ranking) => (
                     <TableRow
                       key={ranking.studentId}
                       sx={{
@@ -321,18 +337,25 @@ export default function StudentAnalyticsPage() {
                   </TableRow>
                 ) : (
                   myResults.map((result) => (
-                    <TableRow key={result.attemptId}>
+                    <TableRow
+                      key={result.attemptId}
+                      onClick={() => navigate(`/student/quiz/${result.quizId}/results/${result.attemptId}`, { state: { sectionId } })}
+                      sx={{
+                        cursor: 'pointer',
+                        '&:hover': { backgroundColor: '#f5f5f5' }
+                      }}
+                    >
                       <TableCell>{result.quizTitle}</TableCell>
                       <TableCell align="right">
                         {formatters.formatScore(result.score, result.maxScore)}
                       </TableCell>
                       <TableCell align="right">
-                        {formatters.formatPercentage(result.completionRate, 1)}
+                        {formatters.formatPercentage(result.percentage || 0, 1)}
                       </TableCell>
                       <TableCell align="right">
                         <Chip
-                          label={result.completionRate >= 60 ? 'Passed' : 'Failed'}
-                          color={result.completionRate >= 60 ? 'success' : 'error'}
+                          label={(result.percentage || 0) >= 60 ? 'Passed' : 'Failed'}
+                          color={(result.percentage || 0) >= 60 ? 'success' : 'error'}
                           size="small"
                           variant="outlined"
                         />

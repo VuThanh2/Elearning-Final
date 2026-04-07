@@ -10,17 +10,16 @@ import {
   Stack,
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import AssignmentIcon from '@mui/icons-material/Assignment';
 import { Quiz } from '../../shared/types';
 import { formatters } from '../../shared/utils/formatters';
 
 interface QuizCardProps {
   quiz: Quiz;
+  sectionId: string;
   onStartQuiz: () => void;
-  onViewResults: () => void;
 }
 
-export default function QuizCard({ quiz, onStartQuiz, onViewResults }: QuizCardProps) {
+export default function QuizCard({ quiz, sectionId, onStartQuiz }: QuizCardProps) {
   const isExpired = new Date(quiz.deadlineAt) < new Date();
 
   return (
@@ -105,15 +104,6 @@ export default function QuizCard({ quiz, onStartQuiz, onViewResults }: QuizCardP
           variant="contained"
         >
           Take Quiz
-        </Button>
-        <Button
-          size="small"
-          startIcon={<AssignmentIcon />}
-          onClick={onViewResults}
-          color="secondary"
-          variant="outlined"
-        >
-          Results
         </Button>
       </CardActions>
     </Card>

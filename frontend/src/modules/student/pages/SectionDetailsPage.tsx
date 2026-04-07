@@ -134,8 +134,8 @@ export default function SectionDetailsPage() {
                   <Grid item xs={12} sm={6} md={4} key={quiz.id}>
                     <QuizCard
                       quiz={quiz}
-                      onStartQuiz={() => navigate(`/student/quiz/${quiz.id}/attempt`)}
-                      onViewResults={() => navigate(`/student/quiz/${quiz.id}/results`)}
+                      sectionId={sectionId || ''}
+                      onStartQuiz={() => navigate(`/student/quiz/${quiz.id}/attempt`, { state: { sectionId } })}
                     />
                   </Grid>
                 ))}
