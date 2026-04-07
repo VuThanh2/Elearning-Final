@@ -13,8 +13,9 @@ import { QuizRepository }            from "../../infrastructure/repositories/Qui
 import { SystemDateTimeProvider }    from "../../infrastructure/providers/SystemDateTimeProvider";
 import { EventEmitterProvider }      from "../../infrastructure/providers/EventEmitterProvider";
 
-// Analytics Cache
+// Analytics Cache + Models
 import { RedisAnalyticCache }        from "../../../analytic/infrastructure/providers/RedisAnalyticCache";
+import { StudentQuizAnswerModel }    from "../../../analytic/infrastructure/database/nosql/models/StudentQuizAnswerModel";
 
 // Use Cases
 import { CreateQuizUseCase }         from "../../application/use-cases/CreateQuizUseCase";
@@ -59,7 +60,7 @@ export function createQuizRouter(
   const updateDeadlineUseCase = new UpdateDeadlineUseCase(quizRepository, dateTimeProvider);
   const publishQuizUseCase    = new PublishQuizUseCase(quizRepository, dateTimeProvider, eventPublisher);
   const hideQuizUseCase       = new HideQuizUseCase(quizRepository, dateTimeProvider, eventPublisher);
-  const deleteQuizUseCase     = new DeleteQuizUseCase(quizRepository, eventPublisher, analyticCache);
+  const deleteQuizUseCase     = new DeleteQuizUseCase(quizRepository, eventPublisher, analyticCache, StudentQuizAnswerModel);
   const getQuizUseCase        = new GetQuizUseCase(quizRepository);
   const getQuizForAttemptUseCase = new GetQuizForAttemptUseCase(quizRepository);
   const getQuizListUseCase    = new GetQuizListUseCase(quizRepository);

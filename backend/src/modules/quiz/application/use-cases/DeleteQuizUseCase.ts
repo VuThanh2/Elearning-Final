@@ -2,6 +2,7 @@ import { IQuizRepository } from "../../domain/interface-repositories/IQuizReposi
 import { IEventPublisher } from "../interfaces/IEventPublisher";
 import { QuizDeleted } from "../../domain/events/QuizDeleted";
 import { IAnalyticCache, AnalyticCacheKey } from "../../../analytic/domain/interface-repositories/IAnalyticCache";
+import { StudentQuizAnswerModel } from "../../../analytic/infrastructure/database/nosql/models/StudentQuizAnswerModel";
 
 // Teacher xóa quiz (chỉ DRAFT hoặc HIDDEN được phép xóa).
 //
@@ -19,6 +20,7 @@ export class DeleteQuizUseCase {
     private readonly quizRepository: IQuizRepository,
     private readonly eventPublisher: IEventPublisher,
     private readonly analyticCache: IAnalyticCache,
+    private readonly studentAnswerModel: typeof StudentQuizAnswerModel,
   ) {}
 
   async execute(
@@ -73,6 +75,15 @@ export class DeleteQuizUseCase {
     console.log(`[DeleteQuizUseCase] Invalidating pattern:`, AnalyticCacheKey.HIER_PATTERN);
     await this.analyticCache.invalidatePattern(AnalyticCacheKey.HIER_PATTERN);
     console.log(`[DeleteQuizUseCase] Invalidated hierarchical pattern`);
+
+    // Bước 5b: delete student attempts from MongoDB
+    console.log(`[DeleteQuizUseCase] Deleting student attempts for quizId=${quizId} from MongoDB`);
+    try {
+      const deleteResult = await this.studentAnswerModel.deleteMany({ quizId });
+      console.log(`[DeleteQuizUseCase] Deleted ${deleteResult.deletedCount} student attempts from MongoDB`);
+    } catch (err) {
+      console.error(`[DeleteQuizUseCase] Failed to delete student attempts:`, err instanceof Error ? err.message : err);
+    }
 
     // Bước 6: publish event
     console.log(`[DeleteQuizUseCase] Publishing QuizDeleted event`);
