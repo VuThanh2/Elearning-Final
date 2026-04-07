@@ -10,6 +10,7 @@ import {
   Stack,
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import AssignmentIcon from '@mui/icons-material/Assignment';
 import { Quiz } from '../../shared/types';
 import { formatters } from '../../shared/utils/formatters';
 
@@ -17,9 +18,10 @@ interface QuizCardProps {
   quiz: Quiz;
   sectionId: string;
   onStartQuiz: () => void;
+  onViewResult: () => void;
 }
 
-export default function QuizCard({ quiz, sectionId, onStartQuiz }: QuizCardProps) {
+export default function QuizCard({ quiz, sectionId, onStartQuiz, onViewResult }: QuizCardProps) {
   const isExpired = new Date(quiz.deadlineAt) < new Date();
 
   console.log('[QuizCard] RENDER:', {
@@ -27,9 +29,8 @@ export default function QuizCard({ quiz, sectionId, onStartQuiz }: QuizCardProps
     quizId: quiz.id,
     isExpired,
     onStartQuizDefined: !!onStartQuiz,
-    propsCount: Object.keys({ quiz, sectionId, onStartQuiz }).length,
+    onViewResultDefined: !!onViewResult,
   });
-  console.log('[QuizCard] Props keys:', Object.keys({ quiz, sectionId, onStartQuiz }));
 
   return (
     <Card sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -103,8 +104,7 @@ export default function QuizCard({ quiz, sectionId, onStartQuiz }: QuizCardProps
         )}
       </CardContent>
 
-      <CardActions sx={{ pt: 0 }}>
-        {console.log('[QuizCard.CardActions] Rendering actions - onStartQuiz:', !!onStartQuiz) || null}
+      <CardActions sx={{ pt: 0, gap: 1 }}>
         <Button
           size="small"
           startIcon={<PlayArrowIcon />}
@@ -114,6 +114,15 @@ export default function QuizCard({ quiz, sectionId, onStartQuiz }: QuizCardProps
           variant="contained"
         >
           Take Quiz
+        </Button>
+        <Button
+          size="small"
+          startIcon={<AssignmentIcon />}
+          onClick={onViewResult}
+          color="secondary"
+          variant="outlined"
+        >
+          View Result
         </Button>
       </CardActions>
     </Card>

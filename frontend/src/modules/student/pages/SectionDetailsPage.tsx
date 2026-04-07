@@ -150,6 +150,10 @@ export default function SectionDetailsPage() {
                           console.log('[SectionDetailsPage] onStartQuiz clicked for quiz:', quiz.id);
                           navigate(`/student/quiz/${quiz.id}/attempt`, { state: { sectionId } });
                         }}
+                        onViewResult={() => {
+                          console.log('[SectionDetailsPage] onViewResult clicked for quiz:', quiz.id);
+                          navigate(`/student/quiz/${quiz.id}/results`, { state: { sectionId } });
+                        }}
                       />
                     </Grid>
                   );

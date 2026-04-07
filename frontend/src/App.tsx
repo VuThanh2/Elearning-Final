@@ -77,6 +77,14 @@ function App() {
                 }
               />
               <Route
+                path="/student/quiz/:quizId/results"
+                element={
+                  <ProtectedRoute requiredRole={USER_ROLES.STUDENT}>
+                    <QuizResultsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/student/sections/:sectionId/analytics"
                 element={
                   <ProtectedRoute requiredRole={USER_ROLES.STUDENT}>
