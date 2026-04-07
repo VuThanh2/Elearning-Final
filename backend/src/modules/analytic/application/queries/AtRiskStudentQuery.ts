@@ -27,26 +27,14 @@ export class AtRiskStudentQuery {
 
     const key    = AnalyticCacheKey.atRiskStudents(sectionId);
     const cached = await this.cache.get<AtRiskSectionReportDTO>(key);
-    if (cached) {
-      console.log(`[AtRiskStudentQuery.bySection] Cache HIT for key: ${key}`);
-      console.log(`[AtRiskStudentQuery.bySection] Cached data:`, JSON.stringify(cached, null, 2));
-      return cached;
-    }
-
-    console.log(`[AtRiskStudentQuery.bySection] ENTRY: teacherId=${teacherId}, sectionId=${sectionId}`);
+    if (cached) return cached;
 
     // Try MongoDB first (aggregates attempt data)
     try {
-      console.log(`[AtRiskStudentQuery.bySection] Querying MongoDB for sectionId=${sectionId}`);
       const mongoData = await this.mongoModel
         .find({ sectionId })
         .lean()
         .exec();
-
-      console.log(`[AtRiskStudentQuery.bySection] MongoDB returned ${mongoData?.length || 0} attempts`);
-      if (mongoData && mongoData.length > 0) {
-        console.log(`[AtRiskStudentQuery.bySection] First attempt:`, JSON.stringify(mongoData[0], null, 2));
-      }
 
       if (mongoData && mongoData.length > 0) {
         // Group by studentId and calculate metrics
@@ -66,8 +54,6 @@ export class AtRiskStudentQuery {
           student.attemptCount += 1;
         }
 
-        console.log(`[AtRiskStudentQuery.bySection] Grouped into ${studentMap.size} unique students`);
-
         // Convert to DTOs
         const students: AtRiskStudentDTO[] = Array.from(studentMap.values()).map((student: any) => {
           const attemptedQuizzes = student.attemptCount;
@@ -79,13 +65,6 @@ export class AtRiskStudentQuery {
           const lowestScore = student.scores.length > 0
             ? Math.min(...student.scores)
             : 0;
-
-          console.log(`[AtRiskStudentQuery.bySection] Student ${student.studentId}:`, {
-            attempts: student.attemptCount,
-            scores: student.scores,
-            avgScore: averageScore,
-            participation: participationRate,
-          });
 
           // Simple risk level calculation
           let participationRiskLevel: RiskLevel = 'LOW';
@@ -109,8 +88,6 @@ export class AtRiskStudentQuery {
           };
         });
 
-        console.log(`[AtRiskStudentQuery.bySection] Converted to ${students.length} DTOs`);
-
         const dto: AtRiskSectionReportDTO = {
           sectionId,
           sectionName: sectionId,
@@ -121,16 +98,14 @@ export class AtRiskStudentQuery {
           ),
         };
 
-        console.log(`[AtRiskStudentQuery.bySection] Final DTO:`, JSON.stringify(dto, null, 2));
         await this.cache.set(key, dto, AnalyticsCacheTTL.HEAVY);
         return dto;
       }
     } catch (err) {
-      console.error(`[AtRiskStudentQuery.bySection] MongoDB query failed:`, err instanceof Error ? err.message : err);
+      // Silently fall back to Oracle if MongoDB fails
     }
 
     try {
-      console.log(`[AtRiskStudentQuery.bySection] Falling back to Oracle`);
       const views    = await this.oracleRepo.findAtRiskStudentsBySection(sectionId);
       const students = views.map((view) => this.toDTO(view));
 
@@ -146,7 +121,6 @@ export class AtRiskStudentQuery {
       await this.cache.set(key, dto, AnalyticsCacheTTL.HEAVY);
       return dto;
     } catch (err) {
-      console.error(`[AtRiskStudentQuery.bySection] Oracle query FAILED:`, err instanceof Error ? err.message : err);
       throw err;
     }
   }
