@@ -36,9 +36,11 @@ export class StartQuizAttemptUseCase {
     quizId:    string,
   ): Promise<StartAttemptResponseDTO> {
     const now = this.dateTimeProvider.now();
+    console.log('[StartQuizAttemptUseCase.execute] ENTRY:', { studentId, quizId });
 
-    // Bước 1: Quiz tồn tại và đang Published 
+    // Bước 1: Quiz tồn tại và đang Published
     const snapshot = await this.quizQueryService.getQuizSnapshot(quizId);
+    console.log('[StartQuizAttemptUseCase.execute] Quiz snapshot:', snapshot ? { status: snapshot.status, maxAttempts: snapshot.maxAttempts, deadlineAt: snapshot.deadlineAt } : 'NULL');
     if (!snapshot) {
       throw new Error(`NotFoundError: Quiz "${quizId}" không tồn tại.`);
     }
@@ -68,14 +70,22 @@ export class StartQuizAttemptUseCase {
       );
     }
 
-    // Bước 3: Student chưa vượt maxAttempts 
+    // Bước 3: Student chưa vượt maxAttempts
     const attemptCount = await this.attemptRepository.countByStudentAndQuiz(
       studentId,
       quizId,
     );
+    console.log('[StartQuizAttemptUseCase] Attempt check:', {
+      studentId,
+      quizId,
+      attemptCount,
+      maxAttempts: snapshot.maxAttempts,
+      condition: `${attemptCount} >= ${snapshot.maxAttempts}?`,
+      result: attemptCount >= snapshot.maxAttempts,
+    });
     if (attemptCount >= snapshot.maxAttempts) {
       throw new Error(
-        `MaxAttemptsReachedError: Bạn đã dùng hết ${snapshot.maxAttempts} lần làm bài.`
+        `MaxAttemptsReachedError: Bạn đã dùng hết ${snapshot.maxAttempts} lần làm bài. (Attempts: ${attemptCount}/${snapshot.maxAttempts})`
       );
     }
 

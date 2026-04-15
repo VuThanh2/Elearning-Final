@@ -37,9 +37,11 @@ export class QuizAttemptRepository implements IQuizAttemptRepository {
     studentId: string,
     quizId: string,
   ): Promise<number> {
-    return this.attemptModel
+    const count = await this.attemptModel
       .countDocuments({ studentId, quizId })
       .exec();
+    console.log('[QuizAttemptRepository.countByStudentAndQuiz]', { studentId, quizId, count });
+    return count;
   }
 
   // dùng $set, không query DB lần 2
