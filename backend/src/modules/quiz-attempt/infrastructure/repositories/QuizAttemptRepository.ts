@@ -44,6 +44,26 @@ export class QuizAttemptRepository implements IQuizAttemptRepository {
     return count;
   }
 
+  // Tìm attempt đang InProgress cho student+quiz — prevent multiple active attempts
+  async findInProgressByStudentAndQuiz(
+    studentId: string,
+    quizId: string,
+  ): Promise<QuizAttempt | null> {
+    console.log('[QuizAttemptRepository.findInProgressByStudentAndQuiz] ENTRY', { studentId, quizId });
+    const doc = await this.attemptModel
+      .findOne({ studentId, quizId, status: AttemptStatus.IN_PROGRESS })
+      .lean<IQuizAttemptDocument>()
+      .exec();
+
+    if (!doc) {
+      console.log('[QuizAttemptRepository.findInProgressByStudentAndQuiz] No InProgress attempt found');
+      return null;
+    }
+
+    console.log('[QuizAttemptRepository.findInProgressByStudentAndQuiz] Found InProgress:', { attemptId: doc._id, status: doc.status });
+    return QuizAttemptMapper.toDomain(doc);
+  }
+
   // dùng $set, không query DB lần 2
   //
   // Chỉ update đúng những field thay đổi khi save:

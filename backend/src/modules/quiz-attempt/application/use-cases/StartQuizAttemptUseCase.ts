@@ -71,6 +71,14 @@ export class StartQuizAttemptUseCase {
     }
 
     // Bước 3: Student chưa vượt maxAttempts
+    // FIRST: Check if there's already an InProgress attempt — prevent multiple active attempts
+    const existingInProgress = await this.attemptRepository.findInProgressByStudentAndQuiz(studentId, quizId);
+    if (existingInProgress) {
+      throw new Error(
+        `ActiveAttemptError: Bạn đang có một bài làm khác chưa hoàn thành. Vui lòng nộp bài hoặc chờ nó hết thời gian trước khi làm lại.`
+      );
+    }
+
     const attemptCount = await this.attemptRepository.countByStudentAndQuiz(
       studentId,
       quizId,
