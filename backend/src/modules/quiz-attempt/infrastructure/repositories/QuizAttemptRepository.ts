@@ -74,6 +74,7 @@ export class QuizAttemptRepository implements IQuizAttemptRepository {
   // attempt phải được saveNewAttempt() trước. Throw để lộ bug sớm.
   async save(attempt: QuizAttempt): Promise<void> {
     const update = QuizAttemptMapper.toFinalizedUpdate(attempt);
+    console.log('[QuizAttemptRepository.save] ENTRY:', { attemptId: attempt.attemptId, updateData: update });
 
     const result = await this.attemptModel
       .updateOne(
@@ -81,6 +82,8 @@ export class QuizAttemptRepository implements IQuizAttemptRepository {
         { $set: update },
       )
       .exec();
+
+    console.log('[QuizAttemptRepository.save] MongoDB result:', { attemptId: attempt.attemptId, matchedCount: result.matchedCount, modifiedCount: result.modifiedCount });
 
     if (result.matchedCount === 0) {
       throw new Error(

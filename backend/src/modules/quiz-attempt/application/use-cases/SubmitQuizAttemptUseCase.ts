@@ -111,6 +111,7 @@ export class SubmitQuizAttemptUseCase {
     });
  
     // Bước 9: attempt.submit() — domain enforce deadline, timeLimit, gradeAndFinalize()
+    console.log('[SubmitQuizAttemptUseCase.execute] Before submit - attempt.status:', attempt.status);
     attempt.submit({
       submittedAnswers,
       quizGradingData: {
@@ -121,9 +122,12 @@ export class SubmitQuizAttemptUseCase {
       timeLimitMs: gradingData.timeLimitMs,
       deadline:    gradingData.deadlineAt,
     });
- 
+    console.log('[SubmitQuizAttemptUseCase.execute] After submit - attempt.status:', attempt.status);
+
     // Bước 10: Persist
+    console.log('[SubmitQuizAttemptUseCase.execute] Before save - attempt:', { attemptId: attempt.attemptId, status: attempt.status, score: attempt.score.value });
     await this.attemptRepository.save(attempt);
+    console.log('[SubmitQuizAttemptUseCase.execute] After save - attempt saved successfully');
  
     // Build lookup maps để enrich từng answer trong event
     // optionContentMap: optionId → content (dùng cho cả selected và correct)
