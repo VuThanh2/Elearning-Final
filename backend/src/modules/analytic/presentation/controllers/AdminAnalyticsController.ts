@@ -19,15 +19,21 @@ export class AdminAnalyticsController {
 
   // GET /analytics/hierarchical-report
   // Permission: VIEW_HIERARCHICAL_REPORT
-  // Response 200: HierarchicalReportRowDTO[]   (flat — toàn trường)
+  // Response 200: HierarchicalReportTreeDTO  (nested tree structure)
   async getFullReport(
     req: Request,
     res: Response,
   ): Promise<void> {
     try {
-      const result = await this.hierarchicalReportQuery.flat({ type: "ALL" });
+      console.log('[AdminAnalyticsController.getFullReport] ENTRY');
+      const result = await this.hierarchicalReportQuery.tree();
+      console.log('[AdminAnalyticsController.getFullReport] Result type:', typeof result);
+      console.log('[AdminAnalyticsController.getFullReport] Result keys:', Object.keys(result || {}));
+      console.log('[AdminAnalyticsController.getFullReport] Result:', result);
+      console.log('[AdminAnalyticsController.getFullReport] Returning response');
       res.status(200).json(result);
     } catch (err) {
+      console.error('[AdminAnalyticsController.getFullReport] ERROR:', err);
       const message = err instanceof Error ? err.message : "Lỗi không xác định.";
       res.status(mapErrorToStatus(message)).json({ message });
     }

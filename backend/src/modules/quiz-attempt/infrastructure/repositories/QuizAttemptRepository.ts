@@ -72,7 +72,6 @@ export class QuizAttemptRepository implements IQuizAttemptRepository {
     const count = await this.attemptModel
       .countDocuments({ studentId, quizId, status: AttemptStatus.IN_PROGRESS })
       .exec();
-    console.log('[QuizAttemptRepository.countInProgressByStudentAndQuiz]', { studentId, quizId, count });
     return count;
   }
 
@@ -82,19 +81,14 @@ export class QuizAttemptRepository implements IQuizAttemptRepository {
     quizId: string,
     keepAttemptId: string,
   ): Promise<void> {
-    console.log('[QuizAttemptRepository.deleteOlderInProgressAttempts] ENTRY', { studentId, quizId, keepAttemptId });
     const result = await this.attemptModel
       .deleteMany({
         studentId,
         quizId,
         status: AttemptStatus.IN_PROGRESS,
-        _id: { $ne: keepAttemptId }, // Delete all except this one
+        _id: { $ne: keepAttemptId },
       })
       .exec();
-
-    if (result.deletedCount > 0) {
-      console.log('[QuizAttemptRepository.deleteOlderInProgressAttempts] Deleted duplicate InProgress attempts:', { deleted: result.deletedCount });
-    }
   }
 
   // dùng $set, không query DB lần 2

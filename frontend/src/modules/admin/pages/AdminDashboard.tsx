@@ -30,27 +30,38 @@ export default function AdminDashboard() {
     const fetchReport = async () => {
       try {
         setLoading(true);
-        console.log('Admin: Fetching hierarchical report...');
+        console.log('[AdminDashboard] ENTRY: Fetching hierarchical report...');
         const data = await analyticsService.getHierarchicalReport();
-        console.log('Admin: Report fetched:', data);
-        console.log('Admin: Report structure:', {
-          id: data.id,
-          name: data.name,
-          level: data.level,
-          hasChilden: Array.isArray(data.children),
-          childrenCount: data.children?.length || 0,
-          hasAverageScore: data.averageScore !== undefined,
-          hasCompletionRate: data.completionRate !== undefined,
-          hasTotalQuizzes: data.totalQuizzes !== undefined,
+        console.log('[AdminDashboard] Report fetched successfully');
+        console.log('[AdminDashboard] Report data:', data);
+        console.log('[AdminDashboard] Report structure:', {
+          id: data?.id,
+          name: data?.name,
+          level: data?.level,
+          hasChildren: Array.isArray(data?.children),
+          childrenCount: data?.children?.length || 0,
+          hasAverageScore: data?.averageScore !== undefined,
+          averageScore: data?.averageScore,
+          hasCompletionRate: data?.completionRate !== undefined,
+          completionRate: data?.completionRate,
+          hasTotalQuizzes: data?.totalQuizzes !== undefined,
+          totalQuizzes: data?.totalQuizzes,
         });
+
+        if (!data) {
+          console.error('[AdminDashboard] Data is null/undefined');
+          setError('No data received from server');
+          return;
+        }
+
         setReport(data);
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Failed to load report';
-        console.error('Admin: Error loading report:', err);
-        console.error('Admin: Error details:', {
-          message: errorMsg,
-          stack: err instanceof Error ? err.stack : 'N/A',
-        });
+        console.error('[AdminDashboard] Error loading report:', err);
+        console.error('[AdminDashboard] Error type:', err instanceof Error ? err.constructor.name : typeof err);
+        if (err instanceof Error) {
+          console.error('[AdminDashboard] Error stack:', err.stack);
+        }
         setError(errorMsg);
       } finally {
         setLoading(false);
