@@ -49,14 +49,38 @@ export class HierarchicalQuizReportQuery {
   // GET /analytics/hierarchical-report/tree
   // → HierarchicalReportTreeDTO
   async tree(): Promise<HierarchicalReportTreeDTO> {
+    console.log('[HierarchicalQuizReportQuery.tree] ENTRY');
     const key    = AnalyticCacheKey.hierarchicalTree();
     const cached = await this.cache.get<HierarchicalReportTreeDTO>(key);
-    if (cached) return cached;
- 
+    console.log('[HierarchicalQuizReportQuery.tree] Cache hit:', !!cached);
+    if (cached) {
+      console.log('[HierarchicalQuizReportQuery.tree] Returning from cache');
+      return cached;
+    }
+
+    console.log('[HierarchicalQuizReportQuery.tree] Querying Oracle...');
     const views = await this.oracleRepo.findHierarchicalReport();
-    const rows  = views.map((view) => this.toRowDTO(view));
+    console.log('[HierarchicalQuizReportQuery.tree] Oracle returned views count:', views?.length || 0);
+
+    if (views && views.length > 0) {
+      console.log('[HierarchicalQuizReportQuery.tree] First view:', {
+        facultyId: views[0]?.facultyId,
+        facultyName: views[0]?.facultyName,
+        courseId: views[0]?.courseId,
+        sectionId: views[0]?.sectionId,
+        quizId: views[0]?.quizId,
+      });
+    }
+
+    const rows  = (views || []).map((view) => this.toRowDTO(view));
+    console.log('[HierarchicalQuizReportQuery.tree] Mapped to rows count:', rows.length);
+
     const dto   = { generatedAt: new Date().toISOString(), faculties: this.buildFaculties(rows) };
+    console.log('[HierarchicalQuizReportQuery.tree] Built faculties count:', dto.faculties.length);
+    console.log('[HierarchicalQuizReportQuery.tree] DTO:', { generatedAt: dto.generatedAt, facultiesCount: dto.faculties.length });
+
     await this.cache.set(key, dto, AnalyticsCacheTTL.HEAVY);
+    console.log('[HierarchicalQuizReportQuery.tree] Cached result');
     return dto;
   }
 

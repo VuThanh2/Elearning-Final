@@ -292,6 +292,7 @@ export class OracleAnalyticsRepository implements IOracleAnalyticsRepository {
   // HierarchicalQuizReportView 
   async findHierarchicalReport(): Promise<HierarchicalQuizReportView[]> {
     try {
+      console.log('[OracleAnalyticsRepository.findHierarchicalReport] ENTRY');
       const result = await this.connection.execute<HierarchicalQuizReportModel>(
         `SELECT FACULTY_ID, FACULTY_NAME, FACULTY_CODE,
                 COURSE_ID,  COURSE_NAME,  COURSE_CODE,
@@ -305,8 +306,16 @@ export class OracleAnalyticsRepository implements IOracleAnalyticsRepository {
         { outFormat: oracledb.OUT_FORMAT_OBJECT },
       );
 
-      return HierarchicalQuizReportMapper.toDomainList(result.rows ?? []);
+      console.log('[OracleAnalyticsRepository.findHierarchicalReport] Query returned rows count:', result.rows?.length || 0);
+      if (result.rows && result.rows.length > 0) {
+        console.log('[OracleAnalyticsRepository.findHierarchicalReport] First row:', result.rows[0]);
+      }
+
+      const views = HierarchicalQuizReportMapper.toDomainList(result.rows ?? []);
+      console.log('[OracleAnalyticsRepository.findHierarchicalReport] Mapped to views count:', views.length);
+      return views;
     } catch (err) {
+      console.error('[OracleAnalyticsRepository.findHierarchicalReport] ERROR:', err);
       throw new Error(
         `AnalyticsOracleRepository.findHierarchicalReport: ${
           err instanceof Error ? err.message : String(err)
