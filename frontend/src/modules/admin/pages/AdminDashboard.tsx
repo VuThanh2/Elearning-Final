@@ -1,21 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Container,
-  Box,
-  Typography,
-  CircularProgress,
   Alert,
+  Box,
   Card,
   CardContent,
-  Grid,
-  LinearProgress,
-  Button,
   Collapse,
+  Grid,
   IconButton,
+  LinearProgress,
+  Stack,
+  Typography,
 } from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import { useAuth, Navbar } from '../../shared';
+import { useAuth } from '../../shared';
+import PageShell from '../../shared/components/PageShell';
 import { analyticsService } from '../services/analyticsService';
 import { HierarchicalReportNode } from '../../shared/types';
 
@@ -30,39 +28,10 @@ export default function AdminDashboard() {
     const fetchReport = async () => {
       try {
         setLoading(true);
-        console.log('[AdminDashboard] ENTRY: Fetching hierarchical report...');
-        const data = await analyticsService.getHierarchicalReport();
-        console.log('[AdminDashboard] Report fetched successfully');
-        console.log('[AdminDashboard] Report data:', data);
-        console.log('[AdminDashboard] Report structure:', {
-          id: data?.id,
-          name: data?.name,
-          level: data?.level,
-          hasChildren: Array.isArray(data?.children),
-          childrenCount: data?.children?.length || 0,
-          hasAverageScore: data?.averageScore !== undefined,
-          averageScore: data?.averageScore,
-          hasCompletionRate: data?.completionRate !== undefined,
-          completionRate: data?.completionRate,
-          hasTotalQuizzes: data?.totalQuizzes !== undefined,
-          totalQuizzes: data?.totalQuizzes,
-        });
-
-        if (!data) {
-          console.error('[AdminDashboard] Data is null/undefined');
-          setError('No data received from server');
-          return;
-        }
-
+        const data = await analyticsService.getHierarchicalReportTree();
         setReport(data);
       } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : 'Failed to load report';
-        console.error('[AdminDashboard] Error loading report:', err);
-        console.error('[AdminDashboard] Error type:', err instanceof Error ? err.constructor.name : typeof err);
-        if (err instanceof Error) {
-          console.error('[AdminDashboard] Error stack:', err.stack);
-        }
-        setError(errorMsg);
+        setError(err instanceof Error ? err.message : 'Failed to load report');
       } finally {
         setLoading(false);
       }
@@ -72,99 +41,63 @@ export default function AdminDashboard() {
   }, []);
 
   const toggleNode = (nodeId: string) => {
-    const newExpanded = new Set(expandedNodes);
-    if (newExpanded.has(nodeId)) {
-      newExpanded.delete(nodeId);
-    } else {
-      newExpanded.add(nodeId);
-    }
-    setExpandedNodes(newExpanded);
+    const next = new Set(expandedNodes);
+    if (next.has(nodeId)) next.delete(nodeId);
+    else next.add(nodeId);
+    setExpandedNodes(next);
   };
 
-  if (loading) {
-    return (
-      <>
-        <Navbar />
-        <Container maxWidth="lg">
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress />
-          </Box>
-        </Container>
-      </>
-    );
-  }
+  const normalizeRate = (value?: number) => (value && value > 1 ? value / 100 : value || 0);
 
   const HierarchyNode = ({ node, level = 0, nodeId = 'root' }: any) => {
     const isExpanded = expandedNodes.has(nodeId);
-    const hasChildren = node.children && node.children.length > 0;
+    const hasChildren = Array.isArray(node.children) && node.children.length > 0;
 
     return (
-      <Box key={nodeId}>
-        {/* Node Card */}
-        <Card sx={{ mb: 1.5, ml: level * 3, backgroundColor: level === 0 ? '#e3f2fd' : 'white' }}>
+      <Box sx={{ ml: level * 3, mb: 1.5 }}>
+        <Card sx={{ borderRadius: 4, boxShadow: '0 12px 32px rgba(15, 23, 42, 0.08)' }}>
           <CardContent>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {/* Expand Button */}
-              {hasChildren && (
-                <IconButton
-                  size="small"
-                  onClick={() => toggleNode(nodeId)}
-                  sx={{
-                    transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.3s',
-                  }}
-                >
-                  <ChevronRightIcon fontSize="small" />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              {hasChildren ? (
+                <IconButton size="small" onClick={() => toggleNode(nodeId)}>
+                  <ChevronRightIcon sx={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
                 </IconButton>
+              ) : (
+                <Box sx={{ width: 40 }} />
               )}
-              {!hasChildren && <Box sx={{ width: 40 }} />}
 
-              {/* Node Content */}
               <Box sx={{ flex: 1 }}>
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 1 }}>
-                  <Typography variant={level === 0 ? 'h6' : 'body2'} sx={{ fontWeight: 700 }}>
-                    {node.name}
-                  </Typography>
-                  <Typography variant="caption" color="textSecondary" sx={{ ml: 'auto' }}>
-                    {node.level}
-                  </Typography>
-                </Box>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }} justifyContent="space-between" sx={{ mb: 1 }}>
+                  <Box>
+                    <Typography variant={level === 0 ? 'h5' : 'h6'} sx={{ fontWeight: 800 }}>
+                      {node.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {node.level}
+                    </Typography>
+                  </Box>
+                </Stack>
 
-                {/* Metrics Grid */}
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={4}>
-                    <Typography variant="caption" display="block" color="textSecondary">
-                      Quizzes
-                    </Typography>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                      {node.totalQuizzes || 0}
-                    </Typography>
+                    <Typography variant="caption" color="text.secondary">Quizzes</Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 800 }}>{node.totalQuizzes || 0}</Typography>
                   </Grid>
-
                   <Grid item xs={12} sm={4}>
-                    <Typography variant="caption" display="block" color="textSecondary">
-                      Completion
-                    </Typography>
+                    <Typography variant="caption" color="text.secondary">Completion</Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Box sx={{ flex: 1 }}>
-                        <LinearProgress
-                          variant="determinate"
-                          value={Math.min((node.completionRate || 0) * 100, 100)}
-                          sx={{ height: 4, borderRadius: 2 }}
-                        />
+                        <LinearProgress variant="determinate" value={Math.min(normalizeRate(node.completionRate) * 100, 100)} sx={{ height: 8, borderRadius: 999 }} />
                       </Box>
-                      <Typography variant="caption" sx={{ fontWeight: 600, minWidth: 40 }}>
-                        {((node.completionRate || 0) * 100).toFixed(1)}%
+                      <Typography variant="body2" sx={{ fontWeight: 700, minWidth: 52 }}>
+                        {(normalizeRate(node.completionRate) * 100).toFixed(1)}%
                       </Typography>
                     </Box>
                   </Grid>
-
                   <Grid item xs={12} sm={4}>
-                    <Typography variant="caption" display="block" color="textSecondary">
-                      Avg Score
-                    </Typography>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                      {((node.averageScore || 0)).toFixed(1)}%
+                    <Typography variant="caption" color="text.secondary">Avg Score</Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                      {(node.averageScore ?? 0).toFixed(1)}%
                     </Typography>
                   </Grid>
                 </Grid>
@@ -173,16 +106,10 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Children */}
         <Collapse in={isExpanded && hasChildren}>
-          <Box>
+          <Box sx={{ mt: 1.5 }}>
             {node.children?.map((child: HierarchicalReportNode, index: number) => (
-              <HierarchyNode
-                key={child.id}
-                node={child}
-                level={level + 1}
-                nodeId={`${nodeId}-${index}`}
-              />
+              <HierarchyNode key={child.id} node={child} level={level + 1} nodeId={`${nodeId}-${index}`} />
             ))}
           </Box>
         </Collapse>
@@ -191,117 +118,77 @@ export default function AdminDashboard() {
   };
 
   return (
-    <>
-      <Navbar />
-      <Container maxWidth="lg">
-        <Box sx={{ py: 4 }}>
-          {/* Header */}
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="h4" sx={{ mb: 1, fontWeight: 700 }}>
-              Welcome, {state.user?.fullName || state.user?.email}
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-              Admin Dashboard - System Overview
-            </Typography>
-          </Box>
+    <PageShell title="Admin Dashboard" subtitle={`Welcome, ${state.user?.fullName || state.user?.email || 'admin'}`}>
+      <Box sx={{ mb: 3, p: 3, borderRadius: 4, bgcolor: '#0f766e', color: '#fff' }}>
+        <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
+          System Overview
+        </Typography>
+        <Typography variant="body2" sx={{ opacity: 0.9 }}>
+          Monitor hierarchy, completion, and performance across the platform.
+        </Typography>
+      </Box>
 
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
-          {loading && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress />
-            </Box>
-          )}
-
-          {/* System Metrics */}
-          {!loading && report && (
-            <Grid container spacing={2} sx={{ mb: 4 }}>
-              <Grid item xs={12} sm={6} md={3}>
-                <Card>
-                  <CardContent>
-                    <Typography color="textSecondary" gutterBottom>
-                      Total Quizzes
-                    </Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                      {report.totalQuizzes || 0}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <Card>
-                  <CardContent>
-                    <Typography color="textSecondary" gutterBottom>
-                      Completion Rate
-                    </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Box sx={{ flex: 1 }}>
-                        <LinearProgress
-                          variant="determinate"
-                          value={Math.min((report.completionRate || 0) * 100, 100)}
-                          sx={{ height: 8, borderRadius: 2 }}
-                        />
-                      </Box>
-                      <Typography variant="h6" sx={{ fontWeight: 700, minWidth: 50 }}>
-                        {((report.completionRate || 0) * 100).toFixed(1)}%
-                      </Typography>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <Card>
-                  <CardContent>
-                    <Typography color="textSecondary" gutterBottom>
-                      Average Score
-                    </Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                      {((report.averageScore || 0)).toFixed(1)}%
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <Card>
-                  <CardContent>
-                    <Typography color="textSecondary" gutterBottom>
-                      Organization Levels
-                    </Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 700, color: 'success.main' }}>
-                      {report.children?.length || 0}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
-          )}
-
-          {/* Hierarchical Report */}
-          {!loading && (
-            <>
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>
-                📊 Hierarchical Report
-              </Typography>
-              <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 2 }}>
-                Click on items to expand/collapse the hierarchy
-              </Typography>
-
-              {report ? (
-                <HierarchyNode node={report} />
-              ) : (
-                <Alert severity="info">No data available</Alert>
-              )}
-            </>
-          )}
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+          <LinearProgress sx={{ width: '40%' }} />
         </Box>
-      </Container>
-    </>
+      ) : (
+        <>
+          <Grid container spacing={3} sx={{ mb: 3 }}>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card sx={{ borderRadius: 4 }}>
+                <CardContent>
+                  <Typography color="text.secondary" gutterBottom>Total Quizzes</Typography>
+                  <Typography variant="h4" sx={{ fontWeight: 800 }}>{report?.totalQuizzes || 0}</Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card sx={{ borderRadius: 4 }}>
+                <CardContent>
+                  <Typography color="text.secondary" gutterBottom>Completion Rate</Typography>
+                  <Typography variant="h4" sx={{ fontWeight: 800, color: 'primary.main' }}>
+                    {((normalizeRate(report?.completionRate) || 0) * 100).toFixed(1)}%
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card sx={{ borderRadius: 4 }}>
+                <CardContent>
+                  <Typography color="text.secondary" gutterBottom>Average Score</Typography>
+                  <Typography variant="h4" sx={{ fontWeight: 800, color: 'success.main' }}>
+                    {(report?.averageScore || 0).toFixed(1)}%
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card sx={{ borderRadius: 4 }}>
+                <CardContent>
+                  <Typography color="text.secondary" gutterBottom>Faculties</Typography>
+                  <Typography variant="h4" sx={{ fontWeight: 800 }}>{report?.children?.length || 0}</Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 800 }}>
+            Hierarchical Report
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Expand the tree to explore faculty, course, and section metrics.
+          </Typography>
+
+          {report ? <HierarchyNode node={report} /> : <Alert severity="info">No data available</Alert>}
+        </>
+      )}
+    </PageShell>
   );
 }

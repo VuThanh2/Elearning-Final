@@ -294,25 +294,94 @@ export class OracleAnalyticsRepository implements IOracleAnalyticsRepository {
     try {
       console.log('[OracleAnalyticsRepository.findHierarchicalReport] ENTRY');
       const result = await this.connection.execute<HierarchicalQuizReportModel>(
-        `SELECT FACULTY_ID, FACULTY_NAME, FACULTY_CODE,
-                COURSE_ID,  COURSE_NAME,  COURSE_CODE,
-                SECTION_ID, SECTION_NAME, SECTION_CODE,
-                QUIZ_ID, QUIZ_TITLE,
-                TOTAL_ATTEMPTS, ATTEMPTED_STUDENTS, TOTAL_STUDENTS,
-                COMPLETION_RATE, AVERAGE_SCORE, LAST_UPDATED_AT
-         FROM   ANALYTICS_HIERARCHICAL_REPORT
-         ORDER BY FACULTY_ID, COURSE_ID, SECTION_ID, QUIZ_TITLE ASC`,
+        `SELECT
+           hr.FACULTY_ID, hr.FACULTY_NAME, hr.FACULTY_CODE,
+           hr.COURSE_ID,  hr.COURSE_NAME,  hr.COURSE_CODE,
+           hr.SECTION_ID, hr.SECTION_NAME, hr.SECTION_CODE,
+           hr.QUIZ_ID, hr.QUIZ_TITLE,
+           hr.TOTAL_ATTEMPTS, hr.ATTEMPTED_STUDENTS,
+           NVL(enr.TOTAL_STUDENTS, 0) AS TOTAL_STUDENTS,
+           CASE
+             WHEN NVL(enr.TOTAL_STUDENTS, 0) > 0
+             THEN ROUND(hr.ATTEMPTED_STUDENTS / NVL(enr.TOTAL_STUDENTS, 0), 4)
+             ELSE hr.COMPLETION_RATE
+           END AS COMPLETION_RATE,
+           hr.AVERAGE_SCORE,
+           hr.LAST_UPDATED_AT
+         FROM   ANALYTICS_HIERARCHICAL_REPORT hr
+         LEFT JOIN (
+           SELECT SECTION_ID, COUNT(*) AS TOTAL_STUDENTS
+           FROM   ENROLLMENTS
+           GROUP  BY SECTION_ID
+         ) enr ON enr.SECTION_ID = hr.SECTION_ID
+         ORDER BY hr.FACULTY_ID, hr.COURSE_ID, hr.SECTION_ID, hr.QUIZ_TITLE ASC`,
         {},
         { outFormat: oracledb.OUT_FORMAT_OBJECT },
       );
 
-      console.log('[OracleAnalyticsRepository.findHierarchicalReport] Query returned rows count:', result.rows?.length || 0);
-      if (result.rows && result.rows.length > 0) {
-        console.log('[OracleAnalyticsRepository.findHierarchicalReport] First row:', result.rows[0]);
+      const analyticsRows = result.rows ?? [];
+      console.log('[OracleAnalyticsRepository.findHierarchicalReport] Query returned rows count:', analyticsRows.length);
+      if (analyticsRows.length > 0) {
+        console.log('[OracleAnalyticsRepository.findHierarchicalReport] First row:', analyticsRows[0]);
       }
 
-      const views = HierarchicalQuizReportMapper.toDomainList(result.rows ?? []);
-      console.log('[OracleAnalyticsRepository.findHierarchicalReport] Mapped to views count:', views.length);
+      if (analyticsRows.length > 0) {
+        const views = HierarchicalQuizReportMapper.toDomainList(analyticsRows);
+        console.log('[OracleAnalyticsRepository.findHierarchicalReport] Mapped to views count:', views.length);
+        return views;
+      }
+
+      console.warn('[OracleAnalyticsRepository.findHierarchicalReport] No analytics rows found, building quiz-based fallback');
+      const fallbackResult = await this.connection.execute<HierarchicalQuizReportModel>(
+        `SELECT
+           f.UNIT_ID   AS FACULTY_ID,
+           f.UNIT_NAME AS FACULTY_NAME,
+           f.UNIT_CODE AS FACULTY_CODE,
+           c.UNIT_ID   AS COURSE_ID,
+           c.UNIT_NAME AS COURSE_NAME,
+           c.UNIT_CODE AS COURSE_CODE,
+           s.UNIT_ID   AS SECTION_ID,
+           s.UNIT_NAME AS SECTION_NAME,
+           s.UNIT_CODE AS SECTION_CODE,
+           q._ID       AS QUIZ_ID,
+           q.TITLE     AS QUIZ_TITLE,
+           COUNT(r.ATTEMPT_ID) AS TOTAL_ATTEMPTS,
+           COUNT(DISTINCT r.STUDENT_ID) AS ATTEMPTED_STUDENTS,
+           NVL(enr.TOTAL_STUDENTS, 0) AS TOTAL_STUDENTS,
+           CASE
+             WHEN NVL(enr.TOTAL_STUDENTS, 0) > 0
+             THEN ROUND(COUNT(DISTINCT r.STUDENT_ID) / NVL(enr.TOTAL_STUDENTS, 0), 4)
+             ELSE 0
+           END AS COMPLETION_RATE,
+           ROUND(NVL(AVG(r.SCORE), 0), 2) AS AVERAGE_SCORE,
+           SYSTIMESTAMP AS LAST_UPDATED_AT
+         FROM QUIZZES q
+         JOIN ACADEMIC_UNITS s ON s.UNIT_ID = q.SECTION_ID AND s.TYPE = 'SECTION'
+         JOIN ACADEMIC_UNITS c ON c.UNIT_ID = s.PARENT_ID AND c.TYPE = 'COURSE'
+         JOIN ACADEMIC_UNITS f ON f.UNIT_ID = c.PARENT_ID AND f.TYPE = 'FACULTY'
+         LEFT JOIN ANALYTICS_STUDENT_QUIZ_RESULT r
+           ON r.QUIZ_ID = q._ID AND r.SECTION_ID = q.SECTION_ID
+         LEFT JOIN (
+           SELECT SECTION_ID, COUNT(*) AS TOTAL_STUDENTS
+           FROM   ENROLLMENTS
+           GROUP  BY SECTION_ID
+         ) enr ON enr.SECTION_ID = s.UNIT_ID
+         GROUP BY
+           f.UNIT_ID, f.UNIT_NAME, f.UNIT_CODE,
+           c.UNIT_ID, c.UNIT_NAME, c.UNIT_CODE,
+           s.UNIT_ID, s.UNIT_NAME, s.UNIT_CODE,
+           q._ID, q.TITLE,
+           enr.TOTAL_STUDENTS
+         ORDER BY f.UNIT_ID, c.UNIT_ID, s.UNIT_ID, q.TITLE ASC`,
+        {},
+        { outFormat: oracledb.OUT_FORMAT_OBJECT },
+      );
+
+      const fallbackRows = fallbackResult.rows ?? [];
+      console.log('[OracleAnalyticsRepository.findHierarchicalReport] Quiz-based fallback rows count:', fallbackRows.length);
+
+      const views = HierarchicalQuizReportMapper.toDomainList(fallbackRows);
+      console.log('[OracleAnalyticsRepository.findHierarchicalReport] Mapped fallback views count:', views.length);
       return views;
     } catch (err) {
       console.error('[OracleAnalyticsRepository.findHierarchicalReport] ERROR:', err);

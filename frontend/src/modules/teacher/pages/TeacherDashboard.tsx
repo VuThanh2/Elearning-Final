@@ -15,7 +15,8 @@ import {
   Fab,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { useAuth, Navbar } from '../../shared';
+import { useAuth } from '../../shared';
+import PageShell from '../../shared/components/PageShell';
 import { academicService } from '../../student/services/academicService';
 import { Section } from '../../shared/types';
 
@@ -44,98 +45,64 @@ export default function TeacherDashboard() {
 
   if (loading) {
     return (
-      <>
-        <Navbar />
-        <Container maxWidth="lg">
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress />
-          </Box>
-        </Container>
-      </>
+      <PageShell title="Teacher Dashboard" subtitle={`Welcome, ${state.user?.fullName || state.user?.email || 'teacher'}`} actionLabel="New Quiz">
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+          <CircularProgress />
+        </Box>
+      </PageShell>
     );
   }
 
   return (
-    <>
-      <Navbar />
-      <Container maxWidth="lg">
-        <Box sx={{ py: 4 }}>
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="h4" sx={{ mb: 1 }}>
-              Welcome, {state.user?.fullName || state.user?.email}
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-              Teacher Dashboard
-            </Typography>
-          </Box>
+    <PageShell title="Teacher Dashboard" subtitle="Manage teaching sections, quizzes, and analytics" actionLabel="New Quiz" onAction={() => navigate('/teacher/quiz/new')}>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
+      <Box sx={{ mb: 3, p: 3, borderRadius: 4, bgcolor: '#0f766e', color: '#fff' }}>
+        <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
+          Welcome back, {state.user?.fullName || state.user?.email}
+        </Typography>
+        <Typography variant="body2" sx={{ opacity: 0.9 }}>
+          You are currently teaching {sections.length} section{sections.length === 1 ? '' : 's'}.
+        </Typography>
+      </Box>
 
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Your Teaching Sections ({sections.length})
-            </Typography>
+      <Typography variant="h6" sx={{ mb: 2, fontWeight: 800 }}>
+        Your Teaching Sections ({sections.length})
+      </Typography>
 
-            {sections.length === 0 ? (
-              <Alert severity="info">You are not teaching any sections yet.</Alert>
-            ) : (
-              <Grid container spacing={3}>
-                {sections.map((section) => (
-                  <Grid item xs={12} sm={6} md={4} key={section.sectionId}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="h6" component="div">
-                          {section.sectionName}
-                        </Typography>
-                        <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
-                          {section.courseName} / {section.facultyName}
-                        </Typography>
-                        <Chip
-                          label={section.term && section.academicYear ? `${section.term} ${section.academicYear}` : 'N/A'}
-                          size="small"
-                          sx={{ mt: 1 }}
-                          variant="outlined"
-                        />
-                      </CardContent>
-                      <CardActions>
-                        <Button
-                          size="small"
-                          onClick={() => navigate(`/teacher/sections/${section.sectionId}`)}
-                        >
-                          Manage Quizzes
-                        </Button>
-                        <Button
-                          size="small"
-                          onClick={() => navigate(`/teacher/sections/${section.sectionId}/analytics`)}
-                        >
-                          Analytics
-                        </Button>
-                      </CardActions>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            )}
-          </Box>
-
-          <Fab
-            color="primary"
-            aria-label="create quiz"
-            sx={{
-              position: 'fixed',
-              bottom: 16,
-              right: 16,
-            }}
-            title="Create New Quiz"
-          >
-            <AddIcon />
-          </Fab>
-        </Box>
-      </Container>
-    </>
+      {sections.length === 0 ? (
+        <Alert severity="info">You are not teaching any sections yet.</Alert>
+      ) : (
+        <Grid container spacing={3}>
+          {sections.map((section) => (
+            <Grid item xs={12} sm={6} md={4} key={section.sectionId}>
+              <Card sx={{ borderRadius: 4, boxShadow: '0 12px 32px rgba(15, 23, 42, 0.08)' }}>
+                <CardContent>
+                  <Chip label={section.term && section.academicYear ? `${section.term} ${section.academicYear}` : 'Current'} size="small" color="primary" variant="outlined" sx={{ mb: 2 }} />
+                  <Typography variant="h6" sx={{ fontWeight: 800, mb: 1 }}>
+                    {section.sectionName}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {section.courseName} / {section.facultyName}
+                  </Typography>
+                </CardContent>
+                <CardActions sx={{ px: 2, pb: 2, gap: 1 }}>
+                  <Button fullWidth variant="contained" onClick={() => navigate(`/teacher/sections/${section.sectionId}`)}>
+                    Manage Quizzes
+                  </Button>
+                  <Button fullWidth variant="outlined" onClick={() => navigate(`/teacher/sections/${section.sectionId}/analytics`)}>
+                    Analytics
+                  </Button>
+                </CardActions>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
+    </PageShell>
   );
 }

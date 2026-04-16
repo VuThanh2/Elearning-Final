@@ -3,56 +3,67 @@ import { createTheme } from '@mui/material/styles';
 export const theme = createTheme({
   palette: {
     primary: {
-      main: '#1976d2',
-      light: '#42a5f5',
-      dark: '#1565c0',
+      main: '#0f4c5c',
+      light: '#2f7283',
+      dark: '#083845',
+      contrastText: '#ffffff',
     },
     secondary: {
-      main: '#dc004e',
-      light: '#e33371',
-      dark: '#9a0036',
+      main: '#f59e0b',
+      light: '#fbbf24',
+      dark: '#b45309',
+    },
+    background: {
+      default: '#f6f7fb',
+      paper: '#ffffff',
     },
     success: {
-      main: '#4caf50',
+      main: '#16a34a',
     },
     error: {
-      main: '#f44336',
+      main: '#dc2626',
     },
     warning: {
-      main: '#ff9800',
+      main: '#d97706',
     },
     info: {
-      main: '#2196f3',
+      main: '#0ea5e9',
+    },
+    text: {
+      primary: '#0f172a',
+      secondary: '#64748b',
     },
   },
   typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-    h1: {
-      fontSize: '2.5rem',
-      fontWeight: 600,
-    },
-    h2: {
-      fontSize: '2rem',
-      fontWeight: 600,
-    },
-    h3: {
-      fontSize: '1.75rem',
-      fontWeight: 600,
-    },
-    h4: {
-      fontSize: '1.5rem',
-      fontWeight: 600,
-    },
-    h5: {
-      fontSize: '1.25rem',
-      fontWeight: 500,
-    },
-    h6: {
-      fontSize: '1rem',
-      fontWeight: 500,
-    },
+    fontFamily: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    h1: { fontSize: '2.5rem', fontWeight: 800 },
+    h2: { fontSize: '2rem', fontWeight: 800 },
+    h3: { fontSize: '1.75rem', fontWeight: 700 },
+    h4: { fontSize: '1.5rem', fontWeight: 700 },
+    h5: { fontSize: '1.25rem', fontWeight: 700 },
+    h6: { fontSize: '1rem', fontWeight: 700 },
   },
   shape: {
-    borderRadius: 8,
+    borderRadius: 18,
+  },
+  components: {
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          borderRadius: 20,
+          boxShadow: '0 10px 30px rgba(15, 23, 42, 0.06)',
+          border: '1px solid rgba(148, 163, 184, 0.14)',
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: 999,
+          textTransform: 'none',
+          fontWeight: 700,
+        },
+      },
+    },
   },
 });
