@@ -52,73 +52,83 @@ export async function initQuizMongo(): Promise<void> {
     .toArray();
 
   if (existingCollections.length === 0) {
-    await db.createCollection("quizzes", {
-      validator: {
-        $jsonSchema: {
-          bsonType: "object",
-          required: [
-            "_id",
-            "teacherId",
-            "sectionId",
-            "title",
-            "timeLimitMinutes",
-            "deadlineAt",
-            "maxAttempts",
-            "maxScore",
-            "status",
-            "createdAt",
-          ],
-          properties: {
-            _id:              { bsonType: "string" },
-            teacherId:        { bsonType: "string" },
-            sectionId:        { bsonType: "string" },
-            title:            { bsonType: "string", minLength: 1 },
-            description:      { bsonType: "string" },
-            timeLimitMinutes: { bsonType: "int", minimum: 1 },
-            deadlineAt:       { bsonType: "date" },
-            maxAttempts:      { bsonType: "int", minimum: 1 },
-            maxScore:         { bsonType: "number", minimum: 0 },
-            status: {
-              bsonType: "string",
-              enum: ["Draft", "Published", "Hidden", "Expired"],
-            },
-            questions: {
-              bsonType: "array",
-              items: {
-                bsonType: "object",
-                required: ["questionId", "content", "questionType", "answerOptions"],
-                properties: {
-                  questionId:   { bsonType: "string" },
-                  content:      { bsonType: "string", minLength: 1 },
-                  questionType: { bsonType: "string", enum: ["MultipleChoice"] },
-                  answerOptions: {
-                    bsonType: "array",
-                    items: {
-                      bsonType: "object",
-                      required: ["optionId", "content", "isCorrect"],
-                      properties: {
-                        optionId:  { bsonType: "string" },
-                        content:   { bsonType: "string", minLength: 1 },
-                        isCorrect: { bsonType: "bool" },
+    try {
+      await db.createCollection("quizzes", {
+        validator: {
+          $jsonSchema: {
+            bsonType: "object",
+            required: [
+              "_id",
+              "teacherId",
+              "sectionId",
+              "title",
+              "timeLimitMinutes",
+              "deadlineAt",
+              "maxAttempts",
+              "maxScore",
+              "status",
+              "createdAt",
+            ],
+            properties: {
+              _id:              { bsonType: "string" },
+              teacherId:        { bsonType: "string" },
+              sectionId:        { bsonType: "string" },
+              title:            { bsonType: "string", minLength: 1 },
+              description:      { bsonType: "string" },
+              timeLimitMinutes: { bsonType: "int", minimum: 1 },
+              deadlineAt:       { bsonType: "date" },
+              maxAttempts:      { bsonType: "int", minimum: 1 },
+              maxScore:         { bsonType: "number", minimum: 0 },
+              status: {
+                bsonType: "string",
+                enum: ["Draft", "Published", "Hidden", "Expired"],
+              },
+              questions: {
+                bsonType: "array",
+                items: {
+                  bsonType: "object",
+                  required: ["questionId", "content", "questionType", "answerOptions"],
+                  properties: {
+                    questionId:   { bsonType: "string" },
+                    content:      { bsonType: "string", minLength: 1 },
+                    questionType: { bsonType: "string", enum: ["MultipleChoice"] },
+                    answerOptions: {
+                      bsonType: "array",
+                      items: {
+                        bsonType: "object",
+                        required: ["optionId", "content", "isCorrect"],
+                        properties: {
+                          optionId:  { bsonType: "string" },
+                          content:   { bsonType: "string", minLength: 1 },
+                          isCorrect: { bsonType: "bool" },
+                        },
                       },
                     },
                   },
                 },
               },
+              hiddenReason: { bsonType: ["string", "null"] },
+              createdAt:    { bsonType: "date" },
+              updatedAt:    { bsonType: ["date", "null"] },
             },
-            hiddenReason: { bsonType: ["string", "null"] },
-            createdAt:    { bsonType: "date" },
-            updatedAt:    { bsonType: ["date", "null"] },
           },
         },
-      },
-      // validationLevel: "strict" — áp dụng validator cho cả insert lẫn update
-      // validationAction: "error" — reject document vi phạm (không chỉ warn)
-      validationLevel:  "strict",
-      validationAction: "error",
-    });
+        // validationLevel: "strict" — áp dụng validator cho cả insert lẫn update
+        // validationAction: "error" — reject document vi phạm (không chỉ warn)
+        validationLevel:  "strict",
+        validationAction: "error",
+      });
 
-    console.log("✅ [Quiz] Collection 'quizzes' đã được tạo với JSON Schema validator.");
+      console.log("✅ [Quiz] Collection 'quizzes' đã được tạo với JSON Schema validator.");
+    } catch (error: unknown) {
+      const mongoError = error as { codeName?: string };
+
+      if (mongoError.codeName === "NamespaceExists") {
+        console.log("ℹ️  [Quiz] Collection 'quizzes' đã tồn tại, bỏ qua bước tạo.");
+      } else {
+        throw error;
+      }
+    }
   } else {
     console.log("ℹ️  [Quiz] Collection 'quizzes' đã tồn tại, bỏ qua bước tạo.");
   }
