@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Alert,
   Box,
@@ -21,10 +22,13 @@ import { HierarchicalReportNode } from '../../shared/types';
 
 export default function AdminDashboard() {
   const { state } = useAuth();
+  const [searchParams] = useSearchParams();
   const [report, setReport] = useState<HierarchicalReportNode | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(['root']));
+  const view = searchParams.get('view');
+
   const fetchReport = async () => {
     try {
       setLoading(true);
@@ -45,7 +49,7 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    fetchReport(false);
+    fetchReport();
   }, []);
 
   const toggleNode = (nodeId: string) => {
@@ -56,6 +60,23 @@ export default function AdminDashboard() {
   };
 
   const normalizeRate = (value?: number) => (value && value > 1 ? value / 100 : value || 0);
+  const heroTitle =
+    view === 'report'
+      ? 'Hierarchy Report'
+      : view === 'performance'
+        ? 'Performance Snapshot'
+        : 'System Overview';
+  const heroSubtitle =
+    view === 'report'
+      ? 'Expand the academic tree to inspect how metrics roll up across the platform.'
+      : view === 'performance'
+        ? 'Track completion, score, and faculty coverage from a single control surface.'
+        : 'Monitor hierarchy, completion, and performance across the platform.';
+  const sectionTitle = view === 'report' ? 'Hierarchy Explorer' : 'Hierarchical Report';
+  const sectionSubtitle =
+    view === 'performance'
+      ? 'Use the tree below to explain the numbers shown in the summary cards.'
+      : 'Expand the tree to explore faculty, course, and section metrics.';
 
   const HierarchyNode = ({ node, level = 0, nodeId = 'root' }: any) => {
     const isExpanded = expandedNodes.has(nodeId);
@@ -131,10 +152,10 @@ export default function AdminDashboard() {
         <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} justifyContent="space-between" spacing={2}>
           <Box>
             <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
-              System Overview
+              {heroTitle}
             </Typography>
             <Typography variant="body2" sx={{ opacity: 0.9 }}>
-              Monitor hierarchy, completion, and performance across the platform.
+              {heroSubtitle}
             </Typography>
           </Box>
           <Button
@@ -201,10 +222,10 @@ export default function AdminDashboard() {
           </Grid>
 
           <Typography variant="h6" sx={{ mb: 2, fontWeight: 800 }}>
-            Hierarchical Report
+            {sectionTitle}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Expand the tree to explore faculty, course, and section metrics.
+            {sectionSubtitle}
           </Typography>
 
           {report ? <HierarchyNode node={report} /> : <Alert severity="info">No data available</Alert>}

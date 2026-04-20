@@ -57,6 +57,7 @@ export default function QuizEditorPage() {
 
   useEffect(() => {
     let mounted = true;
+    const fallbackPath = sectionId ? `/teacher/sections/${sectionId}` : '/teacher/dashboard';
 
     const initialize = async () => {
       if (quizId) {
@@ -84,7 +85,7 @@ export default function QuizEditorPage() {
           setDeadlineAt(new Date(data.deadlineAt).toISOString().split('T')[0]);
         } catch (err) {
           showNotification(err instanceof Error ? err.message : 'Failed to load quiz', 'error');
-          navigate(-1, { replace: true });
+          navigate(fallbackPath, { replace: true });
         } finally {
           if (mounted) setLoading(false);
         }
@@ -93,7 +94,7 @@ export default function QuizEditorPage() {
 
       if (!sectionId) {
         showNotification('Section ID is required to create a quiz', 'error');
-        navigate(-1, { replace: true });
+        navigate('/teacher/dashboard?view=sections', { replace: true });
         return;
       }
 

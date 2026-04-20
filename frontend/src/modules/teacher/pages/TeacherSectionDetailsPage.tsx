@@ -1,34 +1,52 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Container,
-  Box,
-  Typography,
-  CircularProgress,
   Alert,
+  Box,
   Button,
-  Grid,
   Card,
-  CardContent,
   CardActions,
+  CardContent,
   Chip,
+  CircularProgress,
   Dialog,
-  DialogTitle,
-  DialogContent,
   DialogActions,
-  Fab,
+  DialogContent,
+  DialogTitle,
+  Grid,
+  Stack,
+  Typography,
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import EditIcon from '@mui/icons-material/Edit';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { useAuth, Navbar, useNotification } from '../../shared';
+import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded';
+import PageShell from '../../shared/components/PageShell';
+import { useNotification } from '../../shared';
 import { academicService } from '../../student/services/academicService';
 import { quizService } from '../services/quizService';
 import { Section, Quiz } from '../../shared/types';
 import { formatters } from '../../shared/utils/formatters';
+
+const getStatusLabel = (status: string) => {
+  const normalized = String(status || 'DRAFT').toUpperCase();
+  if (normalized === 'PUBLISHED') return 'Published';
+  if (normalized === 'HIDDEN') return 'Hidden';
+  if (normalized === 'EXPIRED') return 'Expired';
+  return 'Draft';
+};
+
+const getStatusColor = (
+  status: string
+): 'default' | 'warning' | 'success' | 'error' => {
+  const normalized = String(status || 'DRAFT').toUpperCase();
+  if (normalized === 'PUBLISHED') return 'success';
+  if (normalized === 'HIDDEN') return 'warning';
+  if (normalized === 'EXPIRED') return 'error';
+  return 'default';
+};
 
 export default function TeacherSectionDetailsPage() {
   const { sectionId } = useParams<{ sectionId: string }>();
@@ -39,7 +57,6 @@ export default function TeacherSectionDetailsPage() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   const [publishDialog, setPublishDialog] = useState<{ open: boolean; quizId: string | null }>({
     open: false,
     quizId: null,
@@ -53,44 +70,33 @@ export default function TeacherSectionDetailsPage() {
     quizId: null,
   });
 
+  const refreshSectionData = async (targetSectionId: string) => {
+    const sections = await academicService.getTeachingSections();
+    const foundSection = sections.find((item) => item.sectionId === targetSectionId);
+
+    if (!foundSection) {
+      throw new Error('Section not found');
+    }
+
+    const quizzesData = await quizService.getSectionQuizzes(targetSectionId);
+    setSection(foundSection);
+    setQuizzes(quizzesData);
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       if (!sectionId) {
         setError('No section ID provided');
+        setLoading(false);
         return;
       }
 
       try {
         setLoading(true);
-        console.log('Fetching teaching sections...');
-
-        // Get section from teaching sections
-        const sections = await academicService.getTeachingSections();
-        console.log('Sections fetched:', sections);
-
-        const foundSection = sections.find((s) => s.sectionId === sectionId);
-        if (!foundSection) {
-          console.error('Section not found. Looking for ID:', sectionId);
-          console.error('Available sections:', sections.map(s => ({ sectionId: s.sectionId, sectionName: s.sectionName })));
-          setError('Section not found');
-          return;
-        }
-
-        setSection(foundSection);
-
-        // Get all quizzes (Draft, Published, Hidden)
-        console.log('Fetching quizzes for section:', sectionId);
-        const quizzesData = await quizService.getSectionQuizzes(sectionId);
-        console.log('Quizzes fetched:', quizzesData);
-        setQuizzes(quizzesData);
+        setError(null);
+        await refreshSectionData(sectionId);
       } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : 'Failed to load section';
-        console.error('Error loading section data:', err);
-        console.error('Error details:', {
-          message: errorMsg,
-          stack: err instanceof Error ? err.stack : 'N/A',
-        });
-        setError(errorMsg);
+        setError(err instanceof Error ? err.message : 'Failed to load section');
       } finally {
         setLoading(false);
       }
@@ -100,347 +106,429 @@ export default function TeacherSectionDetailsPage() {
   }, [sectionId]);
 
   const handlePublish = async () => {
-    if (!publishDialog.quizId) return;
+    if (!publishDialog.quizId || !sectionId) return;
 
     try {
       await quizService.publishQuiz(publishDialog.quizId);
-      showNotification('Quiz published successfully!', 'success');
+      showNotification('Quiz published successfully', 'success');
       setPublishDialog({ open: false, quizId: null });
-
-      // Refresh quizzes
-      const quizzesData = await quizService.getSectionQuizzes(sectionId!);
-      setQuizzes(quizzesData);
+      await refreshSectionData(sectionId);
     } catch (err) {
-      showNotification(
-        err instanceof Error ? err.message : 'Failed to publish quiz',
-        'error'
-      );
+      showNotification(err instanceof Error ? err.message : 'Failed to publish quiz', 'error');
     }
   };
 
   const handleHide = async () => {
-    if (!hideDialog.quizId) return;
+    if (!hideDialog.quizId || !sectionId) return;
 
     try {
       await quizService.hideQuiz(hideDialog.quizId);
-      showNotification('Quiz hidden successfully!', 'success');
+      showNotification('Quiz hidden successfully', 'success');
       setHideDialog({ open: false, quizId: null });
-
-      // Refresh quizzes
-      const quizzesData = await quizService.getSectionQuizzes(sectionId!);
-      setQuizzes(quizzesData);
+      await refreshSectionData(sectionId);
     } catch (err) {
-      showNotification(
-        err instanceof Error ? err.message : 'Failed to hide quiz',
-        'error'
-      );
+      showNotification(err instanceof Error ? err.message : 'Failed to hide quiz', 'error');
     }
   };
 
   const handleDelete = async () => {
-    if (!deleteDialog.quizId) return;
+    if (!deleteDialog.quizId || !sectionId) return;
 
     try {
       await quizService.deleteQuiz(deleteDialog.quizId);
-      showNotification('Quiz deleted successfully!', 'success');
+      showNotification('Quiz deleted successfully', 'success');
       setDeleteDialog({ open: false, quizId: null });
-
-      // Refresh quizzes
-      const quizzesData = await quizService.getSectionQuizzes(sectionId!);
-      setQuizzes(quizzesData);
+      await refreshSectionData(sectionId);
     } catch (err) {
-      showNotification(
-        err instanceof Error ? err.message : 'Failed to delete quiz',
-        'error'
-      );
+      showNotification(err instanceof Error ? err.message : 'Failed to delete quiz', 'error');
     }
   };
 
-  const getStatusColor = (status: string): 'default' | 'warning' | 'success' | 'error' => {
-    switch (status) {
-      case 'DRAFT':
-        return 'default';
-      case 'PUBLISHED':
-        return 'success';
-      case 'HIDDEN':
-        return 'warning';
-      case 'EXPIRED':
-        return 'error';
-      default:
-        return 'default';
-    }
-  };
-
-  const getStatusLabel = (status: string): string => {
-    switch (status) {
-      case 'DRAFT':
-        return '📝 Draft';
-      case 'PUBLISHED':
-        return '🟢 Published';
-      case 'HIDDEN':
-        return '🔒 Hidden';
-      case 'EXPIRED':
-        return '⏰ Expired';
-      default:
-        return status;
-    }
-  };
+  const publishedCount = quizzes.filter((quiz) => String(quiz.status).toUpperCase() === 'PUBLISHED').length;
+  const hiddenCount = quizzes.filter((quiz) => String(quiz.status).toUpperCase() === 'HIDDEN').length;
+  const draftCount = quizzes.filter((quiz) => String(quiz.status).toUpperCase() === 'DRAFT').length;
 
   if (loading) {
     return (
-      <>
-        <Navbar />
-        <Container maxWidth="lg">
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress />
-          </Box>
-        </Container>
-      </>
+      <PageShell
+        title="Section Workspace"
+        subtitle="Loading quiz management tools for this section"
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+          <CircularProgress />
+        </Box>
+      </PageShell>
     );
   }
 
   if (!section) {
     return (
-      <>
-        <Navbar />
-        <Container maxWidth="lg">
-          <Box sx={{ py: 4 }}>
-            <Alert severity="error">{error || 'Section not found'}</Alert>
-            <Button onClick={() => navigate('/teacher/dashboard')} sx={{ mt: 2 }}>
-              Back to Dashboard
-            </Button>
-          </Box>
-        </Container>
-      </>
+      <PageShell title="Section Workspace" subtitle="Unable to load this teaching section">
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error || 'Section not found'}
+        </Alert>
+        <Button onClick={() => navigate('/teacher/dashboard')} variant="contained">
+          Back to Dashboard
+        </Button>
+      </PageShell>
     );
   }
 
   return (
-    <>
-      <Navbar />
-      <Container maxWidth="lg">
-        <Box sx={{ py: 3 }}>
-          {/* Header */}
-          <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Button
-              startIcon={<ArrowBackIcon />}
-              onClick={() => navigate('/teacher/dashboard')}
-              variant="outlined"
-            >
-              Back
-            </Button>
-            <Box>
-              <Typography variant="h4">{section.sectionName}</Typography>
-              <Typography variant="body2" color="textSecondary">
-                Manage Quizzes
+    <PageShell
+      title={section.sectionName}
+      subtitle="Manage quizzes, publishing, and section analytics from one workspace"
+      actionLabel="Create Quiz"
+      onAction={() => navigate(`/teacher/quiz/new?sectionId=${section.sectionId}`)}
+    >
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
+      <Card
+        sx={{
+          mb: 3,
+          borderRadius: 6,
+          border: '1px solid rgba(148, 163, 184, 0.14)',
+          boxShadow: '0 12px 32px rgba(15, 23, 42, 0.08)',
+          background: 'linear-gradient(135deg, rgba(15, 118, 110, 0.08) 0%, rgba(255,255,255,0.96) 100%)',
+        }}
+      >
+        <CardContent sx={{ p: { xs: 2.5, md: 3.5 } }}>
+          <Stack spacing={2}>
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} justifyContent="space-between">
+              <Box>
+                <Button
+                  startIcon={<ArrowBackIcon />}
+                  variant="outlined"
+                  onClick={() => navigate('/teacher/dashboard?view=sections')}
+                  sx={{ mb: 2 }}
+                >
+                  Back to sections
+                </Button>
+                <Typography variant="h4" sx={{ fontWeight: 900, lineHeight: 1.1 }}>
+                  {section.sectionName}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  {section.courseName} / {section.facultyName}
+                </Typography>
+              </Box>
+
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {section.sectionCode && <Chip label={section.sectionCode} variant="outlined" />}
+                {section.courseCode && <Chip label={section.courseCode} variant="outlined" />}
+                {section.facultyCode && <Chip label={section.facultyCode} variant="outlined" />}
+                <Chip
+                  label={section.term && section.academicYear ? `${section.term} ${section.academicYear}` : 'Current'}
+                  color="primary"
+                  variant="outlined"
+                />
+              </Stack>
+            </Stack>
+
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card sx={{ borderRadius: 4, boxShadow: 'none', border: '1px solid rgba(148, 163, 184, 0.14)' }}>
+                  <CardContent>
+                    <Typography variant="body2" color="text.secondary">
+                      Total Quizzes
+                    </Typography>
+                    <Typography variant="h4" sx={{ fontWeight: 900 }}>
+                      {quizzes.length}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card sx={{ borderRadius: 4, boxShadow: 'none', border: '1px solid rgba(148, 163, 184, 0.14)' }}>
+                  <CardContent>
+                    <Typography variant="body2" color="text.secondary">
+                      Published
+                    </Typography>
+                    <Typography variant="h4" sx={{ fontWeight: 900, color: 'success.main' }}>
+                      {publishedCount}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card sx={{ borderRadius: 4, boxShadow: 'none', border: '1px solid rgba(148, 163, 184, 0.14)' }}>
+                  <CardContent>
+                    <Typography variant="body2" color="text.secondary">
+                      Drafts
+                    </Typography>
+                    <Typography variant="h4" sx={{ fontWeight: 900 }}>
+                      {draftCount}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card sx={{ borderRadius: 4, boxShadow: 'none', border: '1px solid rgba(148, 163, 184, 0.14)' }}>
+                  <CardContent>
+                    <Typography variant="body2" color="text.secondary">
+                      Hidden
+                    </Typography>
+                    <Typography variant="h4" sx={{ fontWeight: 900, color: 'warning.main' }}>
+                      {hiddenCount}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+          </Stack>
+        </CardContent>
+      </Card>
+
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+        <Box>
+          <Typography variant="h6" sx={{ fontWeight: 900 }}>
+            Quiz inventory
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Create, publish, hide, or delete quizzes without leaving this section workspace.
+          </Typography>
+        </Box>
+
+        <Button
+          startIcon={<AnalyticsRoundedIcon />}
+          variant="outlined"
+          onClick={() => navigate(`/teacher/sections/${section.sectionId}/analytics`)}
+        >
+          Open analytics
+        </Button>
+      </Box>
+
+      {quizzes.length === 0 ? (
+        <Card
+          sx={{
+            borderRadius: 5,
+            border: '1px solid rgba(148, 163, 184, 0.14)',
+            boxShadow: '0 12px 32px rgba(15, 23, 42, 0.08)',
+          }}
+        >
+          <CardContent sx={{ p: { xs: 2.5, md: 3.5 } }}>
+            <Stack spacing={1.5}>
+              <Typography variant="h6" sx={{ fontWeight: 900 }}>
+                No quizzes in this section yet
               </Typography>
-            </Box>
-          </Box>
+              <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 640 }}>
+                Start with a draft quiz for this section, then come back here to publish it or open section analytics after students submit attempts.
+              </Typography>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                <Button
+                  variant="contained"
+                  onClick={() => navigate(`/teacher/quiz/new?sectionId=${section.sectionId}`)}
+                >
+                  Create first quiz
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={() => navigate(`/teacher/sections/${section.sectionId}/analytics`)}
+                >
+                  View analytics
+                </Button>
+              </Stack>
+            </Stack>
+          </CardContent>
+        </Card>
+      ) : (
+        <Grid container spacing={3}>
+          {quizzes.map((quiz) => {
+            const normalizedStatus = String(quiz.status || 'DRAFT').toUpperCase();
 
-          {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {error}
-            </Alert>
-          )}
+            return (
+              <Grid item xs={12} md={6} xl={4} key={quiz.id}>
+                <Card
+                  sx={{
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    borderRadius: 5,
+                    boxShadow: '0 12px 32px rgba(15, 23, 42, 0.08)',
+                    border: '1px solid rgba(148, 163, 184, 0.14)',
+                  }}
+                >
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Stack spacing={1.5}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
+                        <Chip
+                          label={getStatusLabel(quiz.status)}
+                          color={getStatusColor(quiz.status)}
+                          size="small"
+                          variant="outlined"
+                        />
+                        <Chip
+                          label={`${quiz.totalQuestions ?? quiz.questions?.length ?? 0} questions`}
+                          size="small"
+                          variant="outlined"
+                        />
+                      </Box>
 
-          {/* Quizzes Grid */}
-          {quizzes.length === 0 ? (
-            <Alert severity="info">No quizzes yet. Create your first quiz!</Alert>
-          ) : (
-            <Grid container spacing={3} sx={{ mb: 3 }}>
-              {quizzes.map((quiz) => (
-                <Grid item xs={12} sm={6} md={4} key={quiz.id}>
-                  <Card sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                    <CardContent sx={{ flexGrow: 1 }}>
-                      {/* Title */}
-                      <Typography variant="h6" component="div" sx={{ mb: 1 }}>
-                        {quiz.title}
+                      <Typography variant="h6" sx={{ fontWeight: 900, lineHeight: 1.2 }}>
+                        {quiz.title || 'Untitled quiz'}
                       </Typography>
 
-                      {/* Description */}
-                      {quiz.description && (
-                        <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-                          {quiz.description.length > 80
-                            ? quiz.description.substring(0, 80) + '...'
-                            : quiz.description}
-                        </Typography>
-                      )}
+                      <Typography variant="body2" color="text.secondary" sx={{ minHeight: 44 }}>
+                        {quiz.description || 'No description provided.'}
+                      </Typography>
 
-                      {/* Status Badge */}
-                      <Chip
-                        label={getStatusLabel(quiz.status)}
-                        color={getStatusColor(quiz.status)}
-                        size="small"
-                        sx={{ mb: 2 }}
-                      />
+                      <Grid container spacing={1.5}>
+                        <Grid item xs={6}>
+                          <Typography variant="caption" color="text.secondary">
+                            Time limit
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                            {quiz.timeLimitMinutes} min
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="caption" color="text.secondary">
+                            Attempts
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                            {quiz.maxAttempts}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="caption" color="text.secondary">
+                            Max score
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                            {quiz.maxScore}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="caption" color="text.secondary">
+                            Deadline
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontWeight: 700,
+                              color: new Date(quiz.deadlineAt) < new Date() ? 'error.main' : 'text.primary',
+                            }}
+                          >
+                            {formatters.formatDate(new Date(quiz.deadlineAt))}
+                          </Typography>
+                        </Grid>
+                      </Grid>
+                    </Stack>
+                  </CardContent>
 
-                      {/* Details */}
-                      <Typography variant="caption" display="block" sx={{ mb: 0.5 }}>
-                        ⏱️ {quiz.timeLimitMinutes} min
-                      </Typography>
-                      <Typography variant="caption" display="block" sx={{ mb: 0.5 }}>
-                        📊 {quiz.maxScore} points
-                      </Typography>
-                      <Typography variant="caption" display="block" sx={{ mb: 0.5 }}>
-                        🔄 Max {quiz.maxAttempts} attempts
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        display="block"
-                        sx={{
-                          color:
-                            new Date(quiz.deadlineAt) < new Date() ? 'error.main' : 'textSecondary',
-                        }}
+                  <CardActions sx={{ px: 2, pb: 2, pt: 0 }}>
+                    <Stack spacing={1} sx={{ width: '100%' }}>
+                      <Button
+                        fullWidth
+                        variant={normalizedStatus === 'DRAFT' ? 'contained' : 'outlined'}
+                        startIcon={<EditIcon />}
+                        onClick={() => navigate(`/teacher/quiz/${quiz.id}/edit`)}
                       >
-                        📅 {formatters.formatDate(new Date(quiz.deadlineAt))}
-                      </Typography>
-                    </CardContent>
+                        {normalizedStatus === 'DRAFT' ? 'Continue editing' : 'Edit quiz'}
+                      </Button>
 
-                    <CardActions sx={{ flexDirection: 'column', gap: 1 }}>
-                      {/* Edit Button (Draft only) */}
-                      {(quiz.status === 'DRAFT' || quiz.status === 'Draft') && (
+                      {normalizedStatus === 'DRAFT' && (
                         <Button
-                          size="small"
-                          fullWidth
-                          startIcon={<EditIcon />}
-                          onClick={() => navigate(`/teacher/quiz/${quiz.id}/edit`)}
-                          variant="outlined"
-                        >
-                          Edit
-                        </Button>
-                      )}
-
-                      {/* Delete Button (Visible for DRAFT and HIDDEN) */}
-                      {(quiz.status === 'DRAFT' || quiz.status === 'Draft' || quiz.status === 'HIDDEN' || quiz.status === 'Hidden') ? (
-                        <Button
-                          size="small"
-                          fullWidth
-                          startIcon={<DeleteIcon />}
-                          color="error"
-                          variant="outlined"
-                          onClick={() => setDeleteDialog({ open: true, quizId: quiz.id })}
-                        >
-                          Delete Quiz
-                        </Button>
-                      ) : null}
-
-                      {/* Publish Button (Draft only) */}
-                      {(quiz.status === 'DRAFT' || quiz.status === 'Draft') && (
-                        <Button
-                          size="small"
                           fullWidth
                           startIcon={<PlayArrowIcon />}
                           color="success"
-                          variant="contained"
+                          variant="outlined"
                           onClick={() => setPublishDialog({ open: true, quizId: quiz.id })}
                         >
                           Publish
                         </Button>
                       )}
 
-                      {/* Hide Button (Published only) */}
-                      {(quiz.status === 'PUBLISHED' || quiz.status === 'Published') && (
+                      {normalizedStatus === 'PUBLISHED' && (
                         <Button
-                          size="small"
                           fullWidth
                           startIcon={<VisibilityOffIcon />}
                           color="warning"
                           variant="outlined"
                           onClick={() => setHideDialog({ open: true, quizId: quiz.id })}
                         >
-                          Hide
+                          Hide quiz
                         </Button>
                       )}
 
-                      {/* Preview/Edit Button (Published/Hidden only) */}
-                      {(quiz.status === 'PUBLISHED' || quiz.status === 'Published' || quiz.status === 'HIDDEN' || quiz.status === 'Hidden') && (
+                      {normalizedStatus === 'HIDDEN' && (
                         <Button
-                          size="small"
                           fullWidth
-                          onClick={() => navigate(`/teacher/quiz/${quiz.id}/edit`)}
+                          startIcon={<PlayArrowIcon />}
+                          color="success"
                           variant="outlined"
+                          onClick={() => setPublishDialog({ open: true, quizId: quiz.id })}
                         >
-                          Edit Quiz
+                          Publish again
                         </Button>
                       )}
-                    </CardActions>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-          )}
 
-          {/* Create Quiz FAB */}
-          <Fab
-            color="primary"
-            aria-label="create quiz"
-            sx={{
-              position: 'fixed',
-              bottom: 16,
-              right: 16,
-            }}
-            onClick={() => navigate(`/teacher/quiz/new?sectionId=${sectionId}`)}
-          >
-            <AddIcon />
-          </Fab>
+                      {(normalizedStatus === 'DRAFT' || normalizedStatus === 'HIDDEN') && (
+                        <Button
+                          fullWidth
+                          startIcon={<DeleteIcon />}
+                          color="error"
+                          variant="outlined"
+                          onClick={() => setDeleteDialog({ open: true, quizId: quiz.id })}
+                        >
+                          Delete quiz
+                        </Button>
+                      )}
+                    </Stack>
+                  </CardActions>
+                </Card>
+              </Grid>
+            );
+          })}
+        </Grid>
+      )}
 
-          {/* Publish Dialog */}
-          <Dialog open={publishDialog.open} onClose={() => setPublishDialog({ open: false, quizId: null })}>
-            <DialogTitle>Publish Quiz?</DialogTitle>
-            <DialogContent>
-              <Typography>
-                Once published, students will be able to see and take this quiz. Make sure all
-                questions and options are correct before publishing.
-              </Typography>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setPublishDialog({ open: false, quizId: null })}>
-                Cancel
-              </Button>
-              <Button onClick={handlePublish} variant="contained" color="success">
-                Publish
-              </Button>
-            </DialogActions>
-          </Dialog>
+      <Dialog open={publishDialog.open} onClose={() => setPublishDialog({ open: false, quizId: null })}>
+        <DialogTitle>Publish quiz?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Students will be able to see and attempt this quiz after publishing.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPublishDialog({ open: false, quizId: null })}>Cancel</Button>
+          <Button onClick={handlePublish} variant="contained" color="success">
+            Publish
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-          {/* Hide Dialog */}
-          <Dialog open={hideDialog.open} onClose={() => setHideDialog({ open: false, quizId: null })}>
-            <DialogTitle>Hide Quiz?</DialogTitle>
-            <DialogContent>
-              <Typography>
-                Students will not be able to see this quiz anymore. Existing attempts will still
-                be graded.
-              </Typography>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setHideDialog({ open: false, quizId: null })}>
-                Cancel
-              </Button>
-              <Button onClick={handleHide} variant="contained" color="warning">
-                Hide
-              </Button>
-            </DialogActions>
-          </Dialog>
+      <Dialog open={hideDialog.open} onClose={() => setHideDialog({ open: false, quizId: null })}>
+        <DialogTitle>Hide quiz?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Students will no longer see this quiz, but past attempts remain available for analytics.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setHideDialog({ open: false, quizId: null })}>Cancel</Button>
+          <Button onClick={handleHide} variant="contained" color="warning">
+            Hide
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-          {/* Delete Dialog */}
-          <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, quizId: null })}>
-            <DialogTitle>Delete Quiz?</DialogTitle>
-            <DialogContent>
-              <Typography>
-                This action cannot be undone. All questions and responses will be permanently deleted.
-              </Typography>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setDeleteDialog({ open: false, quizId: null })}>
-                Cancel
-              </Button>
-              <Button onClick={handleDelete} variant="contained" color="error">
-                Delete
-              </Button>
-            </DialogActions>
-          </Dialog>
-        </Box>
-      </Container>
-    </>
+      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, quizId: null })}>
+        <DialogTitle>Delete quiz?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            This action cannot be undone. All quiz content and attempts for this quiz will be removed.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialog({ open: false, quizId: null })}>Cancel</Button>
+          <Button onClick={handleDelete} variant="contained" color="error">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </PageShell>
   );
 }

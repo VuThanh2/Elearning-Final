@@ -1,4 +1,4 @@
-import { Quiz, Question, AnswerOption } from '../types';
+import { Quiz, Question, AnswerOption, QuizStatus } from '../types';
 
 /**
  * Normalize backend quiz response to frontend Quiz type
@@ -15,7 +15,7 @@ export function normalizeQuiz(data: any): Quiz {
 
   const quizId = quizSource.quizId || quizSource.id || '';
   const title = quizSource.title || 'Untitled quiz';
-  const status = String(quizSource.status || 'DRAFT').toUpperCase();
+  const status = String(quizSource.status || 'DRAFT').toUpperCase() as QuizStatus;
   const totalQuestions = Number.isFinite(Number(quizSource.totalQuestions))
     ? Number(quizSource.totalQuestions)
     : Array.isArray(questionsSource)

@@ -138,8 +138,8 @@ export default function StudentAnalyticsPage() {
           <Card sx={{ borderRadius: 4, boxShadow: '0 12px 32px rgba(15, 23, 42, 0.08)' }}>
             <CardContent>
               <Typography variant="h6" sx={{ fontWeight: 800, mb: 2 }}>Class Rankings</Typography>
-              <TableContainer component={Paper} sx={{ boxShadow: 'none', border: '1px solid rgba(148, 163, 184, 0.14)' }}>
-                <Table>
+              <TableContainer component={Paper} sx={{ boxShadow: 'none', border: '1px solid rgba(148, 163, 184, 0.14)', overflowX: 'auto' }}>
+                <Table size="small" sx={{ minWidth: 640 }}>
                   <TableHead sx={{ bgcolor: 'rgba(15, 118, 110, 0.06)' }}>
                     <TableRow>
                       <TableCell sx={{ fontWeight: 700 }}>Rank</TableCell>
@@ -191,8 +191,8 @@ export default function StudentAnalyticsPage() {
       <Card sx={{ borderRadius: 4, boxShadow: '0 12px 32px rgba(15, 23, 42, 0.08)' }}>
         <CardContent>
           <Typography variant="h6" sx={{ fontWeight: 800, mb: 2 }}>My Results</Typography>
-          <TableContainer component={Paper} sx={{ boxShadow: 'none', border: '1px solid rgba(148, 163, 184, 0.14)' }}>
-            <Table>
+          <TableContainer component={Paper} sx={{ boxShadow: 'none', border: '1px solid rgba(148, 163, 184, 0.14)', overflowX: 'auto' }}>
+            <Table size="small" sx={{ minWidth: 720 }}>
               <TableHead sx={{ bgcolor: 'rgba(15, 118, 110, 0.06)' }}>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 700 }}>Quiz</TableCell>

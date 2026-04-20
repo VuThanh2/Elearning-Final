@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
 import {
-  Card,
-  CardContent,
-  CardActions,
-  TextField,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Button,
-  Stack,
   Box,
-  Typography,
+  Button,
+  Card,
+  CardActions,
+  CardContent,
+  FormControl,
   IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
+  Stack,
+  TextField,
+  Typography,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
@@ -25,7 +25,11 @@ interface QuestionEditorProps {
   onDelete: () => void;
 }
 
-export default function QuestionEditor({ question, onUpdate, onDelete }: QuestionEditorProps) {
+export default function QuestionEditor({
+  question,
+  onUpdate,
+  onDelete,
+}: QuestionEditorProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const handleAddOption = () => {
@@ -36,6 +40,7 @@ export default function QuestionEditor({ question, onUpdate, onDelete }: Questio
       content: '',
       isCorrect: false,
     };
+
     onUpdate({
       ...question,
       answerOptions: [...question.answerOptions, newOption],
@@ -43,12 +48,14 @@ export default function QuestionEditor({ question, onUpdate, onDelete }: Questio
   };
 
   const handleUpdateOption = (optionId: string, content: string, isCorrect: boolean) => {
-    const nextAnswerOptions = question.answerOptions.map((opt) => {
-      if (opt.id !== optionId) {
-        return question.questionType === 'SINGLE_CHOICE' && isCorrect ? { ...opt, isCorrect: false } : opt;
+    const nextAnswerOptions = question.answerOptions.map((option) => {
+      if (option.id !== optionId) {
+        return question.questionType === 'SINGLE_CHOICE' && isCorrect
+          ? { ...option, isCorrect: false }
+          : option;
       }
 
-      return { ...opt, content, isCorrect };
+      return { ...option, content, isCorrect };
     });
 
     onUpdate({
@@ -60,16 +67,21 @@ export default function QuestionEditor({ question, onUpdate, onDelete }: Questio
   const handleDeleteOption = (optionId: string) => {
     onUpdate({
       ...question,
-      answerOptions: question.answerOptions.filter((opt) => opt.id !== optionId),
+      answerOptions: question.answerOptions.filter((option) => option.id !== optionId),
     });
   };
 
-  const hasCorrectAnswer = question.answerOptions.some((opt) => opt.isCorrect);
+  const hasCorrectAnswer = question.answerOptions.some((option) => option.isCorrect);
 
   return (
-    <Card sx={{ mb: 2, backgroundColor: isExpanded ? '#fafafa' : 'white' }}>
+    <Card
+      sx={{
+        mb: 2,
+        backgroundColor: isExpanded ? '#fafafa' : '#fff',
+        borderRadius: 4,
+      }}
+    >
       <CardContent>
-        {/* Summary View */}
         {!isExpanded && (
           <Box
             sx={{
@@ -79,47 +91,44 @@ export default function QuestionEditor({ question, onUpdate, onDelete }: Questio
               cursor: 'pointer',
               p: 1,
               '&:hover': { backgroundColor: '#f5f5f5' },
-              borderRadius: 1,
+              borderRadius: 2,
             }}
             onClick={() => setIsExpanded(true)}
           >
             <Box sx={{ flex: 1 }}>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                {question.content || '(No content)'}
+              <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                {question.content || '(No content yet)'}
               </Typography>
-              <Typography variant="caption" color="textSecondary">
-                {question.questionType} • {question.answerOptions.length} options
+              <Typography variant="caption" color="text.secondary">
+                {question.questionType} | {question.answerOptions.length} options
               </Typography>
             </Box>
             {!hasCorrectAnswer && (
-              <Typography variant="caption" sx={{ color: 'warning.main', ml: 1 }}>
-                ⚠️ No correct answer
+              <Typography variant="caption" sx={{ color: 'warning.main', ml: 1, fontWeight: 700 }}>
+                Needs a correct answer
               </Typography>
             )}
           </Box>
         )}
 
-        {/* Expanded View */}
         {isExpanded && (
           <Stack spacing={2}>
-            {/* Question Text */}
             <TextField
               fullWidth
               label="Question"
               value={question.content}
-              onChange={(e) => onUpdate({ ...question, content: e.target.value })}
+              onChange={(event) => onUpdate({ ...question, content: event.target.value })}
               multiline
               rows={3}
               variant="outlined"
             />
 
-            {/* Question Type */}
             <FormControl>
               <InputLabel>Question Type</InputLabel>
               <Select
                 value={question.questionType}
-                onChange={(e) =>
-                  onUpdate({ ...question, questionType: e.target.value as QuestionType })
+                onChange={(event) =>
+                  onUpdate({ ...question, questionType: event.target.value as QuestionType })
                 }
                 label="Question Type"
               >
@@ -128,15 +137,14 @@ export default function QuestionEditor({ question, onUpdate, onDelete }: Questio
               </Select>
             </FormControl>
 
-            {/* Answer Options */}
             <Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
                   Answer Options
                 </Typography>
                 {!hasCorrectAnswer && (
-                  <Typography variant="caption" sx={{ color: 'warning.main' }}>
-                    ⚠️ Mark at least 1 as correct
+                  <Typography variant="caption" sx={{ color: 'warning.main', fontWeight: 700 }}>
+                    Mark at least one option as correct
                   </Typography>
                 )}
               </Box>
@@ -155,7 +163,6 @@ export default function QuestionEditor({ question, onUpdate, onDelete }: Questio
                 ))}
               </Stack>
 
-              {/* Add Option Button */}
               <Button
                 startIcon={<AddIcon />}
                 onClick={handleAddOption}
@@ -171,7 +178,7 @@ export default function QuestionEditor({ question, onUpdate, onDelete }: Questio
       </CardContent>
 
       <CardActions sx={{ justifyContent: 'space-between' }}>
-        <Button onClick={() => setIsExpanded(!isExpanded)}>
+        <Button onClick={() => setIsExpanded((prev) => !prev)}>
           {isExpanded ? 'Collapse' : 'Expand'}
         </Button>
         <IconButton size="small" color="error" onClick={onDelete}>
