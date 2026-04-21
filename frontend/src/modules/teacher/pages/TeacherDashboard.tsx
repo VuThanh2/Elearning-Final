@@ -25,6 +25,10 @@ import PageShell from '../../shared/components/PageShell';
 import { useAuth, useNotification } from '../../shared';
 import { academicService } from '../../student/services/academicService';
 import { Section } from '../../shared/types';
+import {
+  filterSectionsByQuery,
+  normalizeSearchQuery,
+} from '../../shared/utils/dashboardSearch';
 
 type DashboardView = 'overview' | 'sections' | 'quizzes' | 'analytics';
 
@@ -44,24 +48,33 @@ export default function TeacherDashboard() {
   const [sectionPickerOpen, setSectionPickerOpen] = useState(false);
 
   const view = getDashboardView(searchParams.get('view'));
+  const searchQuery = normalizeSearchQuery(searchParams.get('q'));
   const uniqueCourses = new Set(sections.map((section) => section.courseName).filter(Boolean)).size;
   const uniqueFaculties = new Set(sections.map((section) => section.facultyName).filter(Boolean)).size;
 
   useEffect(() => {
+    let active = true;
+
     const fetchSections = async () => {
       try {
         setLoading(true);
+        setError(null);
         const data = await academicService.getTeachingSections();
-        setSections(data);
+        if (!active) return;
+        setSections(filterSectionsByQuery(data, searchQuery));
       } catch (err) {
+        if (!active) return;
         setError(err instanceof Error ? err.message : 'Failed to load sections');
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
     fetchSections();
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [searchQuery]);
 
   const handleCreateQuiz = (sectionId?: string) => {
     if (sectionId) {
@@ -217,7 +230,11 @@ export default function TeacherDashboard() {
 
   if (loading) {
     return (
-      <PageShell title="Teacher Dashboard" subtitle={`Welcome, ${state.user?.fullName || state.user?.email || 'teacher'}`} actionLabel="Create Quiz">
+      <PageShell
+        title="Teacher Dashboard"
+        subtitle={`Welcome, ${state.user?.fullName || state.user?.email || 'teacher'}`}
+        enableSearch
+      >
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
           <CircularProgress />
         </Box>
@@ -229,8 +246,7 @@ export default function TeacherDashboard() {
     <PageShell
       title="Teacher Dashboard"
       subtitle={pageSubtitle}
-      actionLabel="Create Quiz"
-      onAction={() => handleCreateQuiz()}
+      enableSearch
     >
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -287,7 +303,14 @@ export default function TeacherDashboard() {
                 : 'Choose the section where you want to manage quizzes and analytics.'}
           </Typography>
         </Box>
-        <Chip label={`${sections.length} sections`} variant="outlined" />
+        <Chip
+          label={
+            searchQuery
+              ? `${sections.length} result${sections.length === 1 ? '' : 's'}`
+              : `${sections.length} sections`
+          }
+          variant="outlined"
+        />
       </Box>
 
       {sections.length === 0 ? (
@@ -301,10 +324,12 @@ export default function TeacherDashboard() {
           <CardContent sx={{ p: { xs: 2.5, md: 3.5 } }}>
             <Stack spacing={1.5}>
               <Typography variant="h6" sx={{ fontWeight: 900 }}>
-                No teaching sections yet
+                {searchQuery ? 'No matching teaching sections found' : 'No teaching sections yet'}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Once sections are assigned to you, this dashboard will become the control room for quiz creation and analytics.
+                {searchQuery
+                  ? 'Try a different keyword for section name, course code, faculty, or term.'
+                  : 'Once sections are assigned to you, this dashboard will become the control room for quiz creation and analytics.'}
               </Typography>
             </Stack>
           </CardContent>

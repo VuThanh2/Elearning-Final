@@ -178,8 +178,6 @@ export default function TeacherSectionDetailsPage() {
     <PageShell
       title={section.sectionName}
       subtitle="Manage quizzes, publishing, and section analytics from one workspace"
-      actionLabel="Create Quiz"
-      onAction={() => navigate(`/teacher/quiz/new?sectionId=${section.sectionId}`)}
     >
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
@@ -203,10 +201,10 @@ export default function TeacherSectionDetailsPage() {
                 <Button
                   startIcon={<ArrowBackIcon />}
                   variant="outlined"
-                  onClick={() => navigate('/teacher/dashboard?view=sections')}
+                  onClick={() => navigate('/teacher/dashboard')}
                   sx={{ mb: 2 }}
                 >
-                  Back to sections
+                  Back to dashboard
                 </Button>
                 <Typography variant="h4" sx={{ fontWeight: 900, lineHeight: 1.1 }}>
                   {section.sectionName}
@@ -292,13 +290,21 @@ export default function TeacherSectionDetailsPage() {
           </Typography>
         </Box>
 
-        <Button
-          startIcon={<AnalyticsRoundedIcon />}
-          variant="outlined"
-          onClick={() => navigate(`/teacher/sections/${section.sectionId}/analytics`)}
-        >
-          Open analytics
-        </Button>
+        <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap>
+          <Button
+            variant="contained"
+            onClick={() => navigate(`/teacher/quiz/new?sectionId=${section.sectionId}`)}
+          >
+            Create quiz
+          </Button>
+          <Button
+            startIcon={<AnalyticsRoundedIcon />}
+            variant="outlined"
+            onClick={() => navigate(`/teacher/sections/${section.sectionId}/analytics`)}
+          >
+            Open analytics
+          </Button>
+        </Stack>
       </Box>
 
       {quizzes.length === 0 ? (

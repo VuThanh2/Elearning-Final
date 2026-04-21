@@ -1,54 +1,58 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Box,
   Button,
-  Card,
-  CardActions,
-  CardContent,
+  Chip,
   FormControl,
   IconButton,
   InputLabel,
   MenuItem,
+  Paper,
   Select,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
+import AddRoundedIcon from '@mui/icons-material/AddRounded';
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import { Question, QuestionType } from '../../shared/types';
 import AnswerOptionForm from './AnswerOptionForm';
 
 interface QuestionEditorProps {
   question: Question;
+  questionNumber: number;
   onUpdate: (question: Question) => void;
   onDelete: () => void;
 }
 
+const formatQuestionType = (type: QuestionType) =>
+  type === 'SINGLE_CHOICE' ? 'Single choice' : 'Multiple choice';
+
 export default function QuestionEditor({
   question,
+  questionNumber,
   onUpdate,
   onDelete,
 }: QuestionEditorProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-
   const handleAddOption = () => {
-    const newOptionId = Math.random().toString(36).substring(7);
-    const newOption = {
-      id: newOptionId,
-      optionId: newOptionId,
-      content: '',
-      isCorrect: false,
-    };
+    const optionId = Math.random().toString(36).slice(2, 9);
 
     onUpdate({
       ...question,
-      answerOptions: [...question.answerOptions, newOption],
+      answerOptions: [
+        ...question.answerOptions,
+        {
+          id: optionId,
+          optionId,
+          content: '',
+          isCorrect: false,
+        },
+      ],
     });
   };
 
   const handleUpdateOption = (optionId: string, content: string, isCorrect: boolean) => {
-    const nextAnswerOptions = question.answerOptions.map((option) => {
+    const nextOptions = question.answerOptions.map((option) => {
       if (option.id !== optionId) {
         return question.questionType === 'SINGLE_CHOICE' && isCorrect
           ? { ...option, isCorrect: false }
@@ -60,7 +64,7 @@ export default function QuestionEditor({
 
     onUpdate({
       ...question,
-      answerOptions: nextAnswerOptions,
+      answerOptions: nextOptions,
     });
   };
 
@@ -74,117 +78,111 @@ export default function QuestionEditor({
   const hasCorrectAnswer = question.answerOptions.some((option) => option.isCorrect);
 
   return (
-    <Card
+    <Paper
+      elevation={0}
       sx={{
-        mb: 2,
-        backgroundColor: isExpanded ? '#fafafa' : '#fff',
-        borderRadius: 4,
+        p: { xs: 2, md: 2.5 },
+        borderRadius: 5,
+        border: '1px solid rgba(30,57,50,0.08)',
+        borderLeft: '4px solid var(--academy-green)',
+        backgroundColor: 'rgba(255,255,255,0.98)',
       }}
     >
-      <CardContent>
-        {!isExpanded && (
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              cursor: 'pointer',
-              p: 1,
-              '&:hover': { backgroundColor: '#f5f5f5' },
-              borderRadius: 2,
-            }}
-            onClick={() => setIsExpanded(true)}
-          >
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                {question.content || '(No content yet)'}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {question.questionType} | {question.answerOptions.length} options
-              </Typography>
+      <Stack spacing={2.25}>
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          justifyContent="space-between"
+          alignItems={{ xs: 'flex-start', md: 'center' }}
+          spacing={1.5}
+        >
+          <Stack direction="row" spacing={1.25} alignItems="center" flexWrap="wrap">
+            <Box
+              sx={{
+                minWidth: 44,
+                height: 44,
+                px: 1.25,
+                borderRadius: 3,
+                display: 'grid',
+                placeItems: 'center',
+                bgcolor: 'rgba(0,117,74,0.08)',
+                color: 'var(--academy-green)',
+                fontWeight: 800,
+                letterSpacing: '0.08em',
+              }}
+            >
+              {String(questionNumber).padStart(2, '0')}
             </Box>
+            <Chip label={formatQuestionType(question.questionType)} size="small" variant="outlined" />
             {!hasCorrectAnswer && (
-              <Typography variant="caption" sx={{ color: 'warning.main', ml: 1, fontWeight: 700 }}>
-                Needs a correct answer
-              </Typography>
+              <Chip label="Needs correct answer" size="small" color="warning" variant="outlined" />
             )}
-          </Box>
-        )}
-
-        {isExpanded && (
-          <Stack spacing={2}>
-            <TextField
-              fullWidth
-              label="Question"
-              value={question.content}
-              onChange={(event) => onUpdate({ ...question, content: event.target.value })}
-              multiline
-              rows={3}
-              variant="outlined"
-            />
-
-            <FormControl>
-              <InputLabel>Question Type</InputLabel>
-              <Select
-                value={question.questionType}
-                onChange={(event) =>
-                  onUpdate({ ...question, questionType: event.target.value as QuestionType })
-                }
-                label="Question Type"
-              >
-                <MenuItem value="SINGLE_CHOICE">Single Choice (Radio)</MenuItem>
-                <MenuItem value="MULTIPLE_CHOICE">Multiple Choice (Checkbox)</MenuItem>
-              </Select>
-            </FormControl>
-
-            <Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                  Answer Options
-                </Typography>
-                {!hasCorrectAnswer && (
-                  <Typography variant="caption" sx={{ color: 'warning.main', fontWeight: 700 }}>
-                    Mark at least one option as correct
-                  </Typography>
-                )}
-              </Box>
-
-              <Stack spacing={1}>
-                {question.answerOptions.map((option) => (
-                  <AnswerOptionForm
-                    key={option.id}
-                    option={option}
-                    questionType={question.questionType}
-                    onUpdate={(content, isCorrect) =>
-                      handleUpdateOption(option.id, content, isCorrect)
-                    }
-                    onDelete={() => handleDeleteOption(option.id)}
-                  />
-                ))}
-              </Stack>
-
-              <Button
-                startIcon={<AddIcon />}
-                onClick={handleAddOption}
-                fullWidth
-                variant="outlined"
-                sx={{ mt: 2 }}
-              >
-                Add Option
-              </Button>
-            </Box>
           </Stack>
-        )}
-      </CardContent>
 
-      <CardActions sx={{ justifyContent: 'space-between' }}>
-        <Button onClick={() => setIsExpanded((prev) => !prev)}>
-          {isExpanded ? 'Collapse' : 'Expand'}
-        </Button>
-        <IconButton size="small" color="error" onClick={onDelete}>
-          <DeleteIcon />
-        </IconButton>
-      </CardActions>
-    </Card>
+          <IconButton color="error" onClick={onDelete} aria-label="Delete question">
+            <DeleteOutlineRoundedIcon />
+          </IconButton>
+        </Stack>
+
+        <TextField
+          fullWidth
+          label="Question prompt"
+          value={question.content}
+          onChange={(event) => onUpdate({ ...question, content: event.target.value })}
+          multiline
+          minRows={3}
+        />
+
+        <FormControl fullWidth>
+          <InputLabel>Question type</InputLabel>
+          <Select
+            value={question.questionType}
+            label="Question type"
+            onChange={(event) =>
+              onUpdate({ ...question, questionType: event.target.value as QuestionType })
+            }
+          >
+            <MenuItem value="MULTIPLE_CHOICE">Multiple choice</MenuItem>
+            <MenuItem value="SINGLE_CHOICE">Single choice</MenuItem>
+          </Select>
+        </FormControl>
+
+        <Stack spacing={1.25}>
+          <Box>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'var(--deep-slate)' }}>
+              Answer options
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              {question.questionType === 'SINGLE_CHOICE'
+                ? 'Pick one correct answer for this question.'
+                : 'You can mark one or more answers as correct.'}
+            </Typography>
+          </Box>
+
+          <Stack spacing={1.25}>
+            {question.answerOptions.map((option, index) => (
+              <AnswerOptionForm
+                key={option.id}
+                option={option}
+                optionNumber={index + 1}
+                questionType={question.questionType}
+                onUpdate={(content, isCorrect) =>
+                  handleUpdateOption(option.id, content, isCorrect)
+                }
+                onDelete={() => handleDeleteOption(option.id)}
+              />
+            ))}
+          </Stack>
+
+          <Button
+            startIcon={<AddRoundedIcon />}
+            onClick={handleAddOption}
+            variant="text"
+            sx={{ alignSelf: 'flex-start' }}
+          >
+            Add option
+          </Button>
+        </Stack>
+      </Stack>
+    </Paper>
   );
 }

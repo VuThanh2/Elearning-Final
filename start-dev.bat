@@ -115,6 +115,8 @@ echo.
 echo Services:
 echo   Frontend:  http://localhost:5173
 echo   Backend:   http://localhost:3000
+echo   Swagger:   http://localhost:3000/api-docs/
+echo   OpenAPI:   http://localhost:3000/openapi.json
 echo   MongoDB:   localhost:27017
 echo   Redis:     localhost:6379
 echo   Oracle:    localhost:1521

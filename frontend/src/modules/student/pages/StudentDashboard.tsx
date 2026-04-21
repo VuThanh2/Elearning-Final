@@ -21,6 +21,10 @@ import PageShell from '../../shared/components/PageShell';
 import { useAuth } from '../../shared';
 import { academicService } from '../services/academicService';
 import { Section } from '../../shared/types';
+import {
+  filterSectionsByQuery,
+  normalizeSearchQuery,
+} from '../../shared/utils/dashboardSearch';
 
 type DashboardView = 'overview' | 'sections' | 'quizzes' | 'analytics';
 
@@ -46,6 +50,7 @@ export default function StudentDashboard() {
   const [error, setError] = useState<string | null>(null);
 
   const view = getDashboardView(searchParams.get('view'));
+  const searchQuery = normalizeSearchQuery(searchParams.get('q'));
   const uniqueFaculties = new Set(sections.map((section) => section.facultyName).filter(Boolean)).size;
   const uniqueTerms = new Set(
     sections
@@ -54,20 +59,28 @@ export default function StudentDashboard() {
   ).size;
 
   useEffect(() => {
+    let active = true;
+
     const fetchSections = async () => {
       try {
         setLoading(true);
+        setError(null);
         const data = await academicService.getEnrolledSections();
-        setSections(data);
+        if (!active) return;
+        setSections(filterSectionsByQuery(data, searchQuery));
       } catch (err) {
+        if (!active) return;
         setError(err instanceof Error ? err.message : 'Failed to load sections');
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
     fetchSections();
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [searchQuery]);
 
   const pageSubtitle =
     view === 'analytics'
@@ -300,7 +313,11 @@ export default function StudentDashboard() {
 
   if (loading) {
     return (
-      <PageShell title="Student Dashboard" subtitle={`Welcome, ${state.user?.fullName || state.user?.email || 'student'}`}>
+      <PageShell
+        title="Student Dashboard"
+        subtitle={`Welcome, ${state.user?.fullName || state.user?.email || 'student'}`}
+        enableSearch
+      >
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
           <CircularProgress />
         </Box>
@@ -309,7 +326,7 @@ export default function StudentDashboard() {
   }
 
   return (
-    <PageShell title="Student Dashboard" subtitle={pageSubtitle}>
+    <PageShell title="Student Dashboard" subtitle={pageSubtitle} enableSearch>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
@@ -375,7 +392,14 @@ export default function StudentDashboard() {
                 : 'Choose a section to view quizzes and analytics.'}
           </Typography>
         </Box>
-        <Chip label={`${sections.length} sections`} variant="outlined" />
+        <Chip
+          label={
+            searchQuery
+              ? `${sections.length} result${sections.length === 1 ? '' : 's'}`
+              : `${sections.length} sections`
+          }
+          variant="outlined"
+        />
       </Box>
 
       {sections.length === 0 ? (
@@ -389,10 +413,12 @@ export default function StudentDashboard() {
           <CardContent sx={{ p: { xs: 2.5, md: 3.5 } }}>
             <Stack spacing={1.5}>
               <Typography variant="h6" sx={{ fontWeight: 900 }}>
-                No enrolled sections yet
+                {searchQuery ? 'No matching sections found' : 'No enrolled sections yet'}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Once you are added to a section, your quizzes and analytics shortcuts will appear here.
+                {searchQuery
+                  ? 'Try a different keyword for section name, course code, faculty, or term.'
+                  : 'Once you are added to a section, your quizzes and analytics shortcuts will appear here.'}
               </Typography>
             </Stack>
           </CardContent>

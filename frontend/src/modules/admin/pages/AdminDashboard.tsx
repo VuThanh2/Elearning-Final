@@ -19,6 +19,10 @@ import { useAuth } from '../../shared';
 import PageShell from '../../shared/components/PageShell';
 import { analyticsService } from '../services/analyticsService';
 import { HierarchicalReportNode } from '../../shared/types';
+import {
+  filterHierarchyByQuery,
+  normalizeSearchQuery,
+} from '../../shared/utils/dashboardSearch';
 
 export default function AdminDashboard() {
   const { state } = useAuth();
@@ -28,6 +32,7 @@ export default function AdminDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(['root']));
   const view = searchParams.get('view');
+  const searchQuery = normalizeSearchQuery(searchParams.get('q'));
 
   const fetchReport = async () => {
     try {
@@ -36,11 +41,12 @@ export default function AdminDashboard() {
 
       try {
         const data = await analyticsService.getHierarchicalReportTree();
-        setReport(data);
+        setReport(filterHierarchyByQuery(data, searchQuery));
       } catch {
         const fallback = await analyticsService.getHierarchicalReport();
-        setReport(fallback);
+        setReport(filterHierarchyByQuery(fallback, searchQuery));
       }
+      setExpandedNodes(new Set(['root']));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load report');
     } finally {
@@ -50,7 +56,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchReport();
-  }, []);
+  }, [searchQuery]);
 
   const toggleNode = (nodeId: string) => {
     const next = new Set(expandedNodes);
@@ -147,7 +153,11 @@ export default function AdminDashboard() {
   };
 
   return (
-    <PageShell title="Admin Dashboard" subtitle={`Welcome, ${state.user?.fullName || state.user?.email || 'admin'}`}>
+    <PageShell
+      title="Admin Dashboard"
+      subtitle={`Welcome, ${state.user?.fullName || state.user?.email || 'admin'}`}
+      enableSearch
+    >
       <Box sx={{ mb: 3, p: 3, borderRadius: 4, bgcolor: '#0f766e', color: '#fff' }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} justifyContent="space-between" spacing={2}>
           <Box>
@@ -228,7 +238,15 @@ export default function AdminDashboard() {
             {sectionSubtitle}
           </Typography>
 
-          {report ? <HierarchyNode node={report} /> : <Alert severity="info">No data available</Alert>}
+          {report ? (
+            <HierarchyNode node={report} />
+          ) : (
+            <Alert severity="info">
+              {searchQuery
+                ? 'No report nodes match your search.'
+                : 'No data available'}
+            </Alert>
+          )}
         </>
       )}
     </PageShell>

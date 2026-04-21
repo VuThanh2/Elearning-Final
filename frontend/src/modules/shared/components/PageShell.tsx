@@ -22,14 +22,8 @@ import {
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded';
-import SchoolRoundedIcon from '@mui/icons-material/SchoolRounded';
-import QuizRoundedIcon from '@mui/icons-material/QuizRounded';
-import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded';
-import AccountTreeRoundedIcon from '@mui/icons-material/AccountTreeRounded';
-import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
-import NotificationsNoneRoundedIcon from '@mui/icons-material/NotificationsNoneRounded';
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -43,7 +37,7 @@ interface NavItem {
   label: string;
   path: string;
   icon: React.ReactElement;
-  isActive: (pathname: string, view: string | null) => boolean;
+  isActive: (pathname: string) => boolean;
 }
 
 interface NavGroup {
@@ -59,31 +53,7 @@ const getStudentGroups = (): NavGroup[] => [
         label: 'Dashboard',
         path: '/student/dashboard',
         icon: <DashboardRoundedIcon />,
-        isActive: (pathname, view) => pathname === '/student/dashboard' && !view,
-      },
-      {
-        label: 'Sections',
-        path: '/student/dashboard?view=sections',
-        icon: <SchoolRoundedIcon />,
-        isActive: (pathname, view) => pathname === '/student/dashboard' && view === 'sections',
-      },
-      {
-        label: 'Quizzes',
-        path: '/student/dashboard?view=quizzes',
-        icon: <QuizRoundedIcon />,
-        isActive: (pathname, view) =>
-          pathname.startsWith('/student/quiz/') ||
-          (pathname.startsWith('/student/sections/') && !pathname.endsWith('/analytics')) ||
-          (pathname === '/student/dashboard' && view === 'quizzes'),
-      },
-      {
-        label: 'Analytics',
-        path: '/student/dashboard?view=analytics',
-        icon: <AnalyticsRoundedIcon />,
-        isActive: (pathname, view) =>
-          pathname.endsWith('/analytics') ||
-          pathname.includes('/results') ||
-          (pathname === '/student/dashboard' && view === 'analytics'),
+        isActive: (pathname) => pathname.startsWith('/student'),
       },
     ],
   },
@@ -97,31 +67,7 @@ const getTeacherGroups = (): NavGroup[] => [
         label: 'Dashboard',
         path: '/teacher/dashboard',
         icon: <DashboardRoundedIcon />,
-        isActive: (pathname, view) => pathname === '/teacher/dashboard' && !view,
-      },
-      {
-        label: 'Sections',
-        path: '/teacher/dashboard?view=sections',
-        icon: <SchoolRoundedIcon />,
-        isActive: (pathname, view) =>
-          (pathname.startsWith('/teacher/sections/') && !pathname.endsWith('/analytics')) ||
-          (pathname === '/teacher/dashboard' && view === 'sections'),
-      },
-      {
-        label: 'Quizzes',
-        path: '/teacher/dashboard?view=quizzes',
-        icon: <QuizRoundedIcon />,
-        isActive: (pathname, view) =>
-          pathname.startsWith('/teacher/quiz/') ||
-          (pathname === '/teacher/dashboard' && view === 'quizzes'),
-      },
-      {
-        label: 'Analytics',
-        path: '/teacher/dashboard?view=analytics',
-        icon: <AnalyticsRoundedIcon />,
-        isActive: (pathname, view) =>
-          pathname.endsWith('/analytics') ||
-          (pathname === '/teacher/dashboard' && view === 'analytics'),
+        isActive: (pathname) => pathname.startsWith('/teacher'),
       },
     ],
   },
@@ -132,23 +78,10 @@ const getAdminGroups = (): NavGroup[] => [
     title: 'Control',
     items: [
       {
-        label: 'Overview',
+        label: 'Dashboard',
         path: '/admin/dashboard',
         icon: <DashboardRoundedIcon />,
-        isActive: (pathname, view) =>
-          pathname === '/admin/dashboard' && (!view || view === 'overview'),
-      },
-      {
-        label: 'Hierarchy',
-        path: '/admin/dashboard?view=report',
-        icon: <AccountTreeRoundedIcon />,
-        isActive: (pathname, view) => pathname === '/admin/dashboard' && view === 'report',
-      },
-      {
-        label: 'Performance',
-        path: '/admin/dashboard?view=performance',
-        icon: <InsightsRoundedIcon />,
-        isActive: (pathname, view) => pathname === '/admin/dashboard' && view === 'performance',
+        isActive: (pathname) => pathname.startsWith('/admin'),
       },
     ],
   },
@@ -183,12 +116,14 @@ export default function PageShell({
   subtitle,
   actionLabel,
   onAction,
+  enableSearch = false,
 }: {
   children: React.ReactNode;
   title?: string;
   subtitle?: string;
   actionLabel?: string;
   onAction?: () => void;
+  enableSearch?: boolean;
 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -196,6 +131,8 @@ export default function PageShell({
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('lg'));
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [searchInput, setSearchInput] = React.useState('');
+  const [, startTransition] = React.useTransition();
 
   const homePath =
     state.user?.role === USER_ROLES.ADMIN
@@ -203,9 +140,50 @@ export default function PageShell({
       : state.user?.role === USER_ROLES.TEACHER
         ? '/teacher/dashboard'
         : '/student/dashboard';
-  const currentView = new URLSearchParams(location.search).get('view');
   const displayName = state.user?.fullName || state.user?.email || 'User';
   const roleLabel = formatRoleLabel(state.user?.role);
+
+  React.useEffect(() => {
+    if (!enableSearch) {
+      setSearchInput('');
+      return;
+    }
+
+    const nextSearchInput = new URLSearchParams(location.search).get('q') ?? '';
+    setSearchInput(nextSearchInput);
+  }, [enableSearch, location.search]);
+
+  React.useEffect(() => {
+    if (!enableSearch) return;
+
+    const timeoutId = window.setTimeout(() => {
+      const params = new URLSearchParams(location.search);
+      const nextQuery = searchInput.trim();
+      const currentQuery = params.get('q') ?? '';
+
+      if (currentQuery === nextQuery) {
+        return;
+      }
+
+      if (nextQuery) {
+        params.set('q', nextQuery);
+      } else {
+        params.delete('q');
+      }
+
+      startTransition(() => {
+        navigate(
+          {
+            pathname: location.pathname,
+            search: params.toString() ? `?${params.toString()}` : '',
+          },
+          { replace: true }
+        );
+      });
+    }, 300);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [enableSearch, location.pathname, location.search, navigate, searchInput, startTransition]);
 
   const handleSignOut = async () => {
     await logout();
@@ -326,7 +304,7 @@ export default function PageShell({
           </Typography>
           <List disablePadding sx={{ mt: 1 }}>
             {group.items.map((item) => {
-              const active = item.isActive(location.pathname, currentView);
+              const active = item.isActive(location.pathname);
 
               return (
                 <ListItemButton
@@ -388,7 +366,7 @@ export default function PageShell({
               Need a hand?
             </Typography>
             <Typography variant="body2" sx={{ color: 'var(--text-white-soft)' }}>
-              Check notifications, review your recent activity, or sign out when you are done.
+              Keep the workspace simple, review what matters, and sign out when you are done.
             </Typography>
             <Button fullWidth variant="contained" onClick={handleSignOut}>
               Sign out
@@ -462,25 +440,29 @@ export default function PageShell({
                 </IconButton>
               )}
 
-              <Paper
-                sx={{
-                  flex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  px: 2,
-                  py: 1.1,
-                  borderRadius: 999,
-                  boxShadow: 'none',
-                  bgcolor: alpha('#ffffff', 0.72),
-                  border: `1px solid ${alpha('#1E3932', 0.08)}`,
-                }}
-              >
-                <SearchRoundedIcon sx={{ color: alpha('#1E3932', 0.55), mr: 1 }} />
-                <InputBase
-                  placeholder={getSearchPlaceholder(state.user?.role)}
-                  sx={{ flex: 1 }}
-                />
-              </Paper>
+              {enableSearch && (
+                <Paper
+                  sx={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    px: 2,
+                    py: 1.1,
+                    borderRadius: 999,
+                    boxShadow: 'none',
+                    bgcolor: alpha('#ffffff', 0.72),
+                    border: `1px solid ${alpha('#1E3932', 0.08)}`,
+                  }}
+                >
+                  <SearchRoundedIcon sx={{ color: alpha('#1E3932', 0.55), mr: 1 }} />
+                  <InputBase
+                    value={searchInput}
+                    onChange={(event) => setSearchInput(event.target.value)}
+                    placeholder={getSearchPlaceholder(state.user?.role)}
+                    sx={{ flex: 1 }}
+                  />
+                </Paper>
+              )}
 
               {actionLabel && onAction && (
                 <Button
@@ -492,16 +474,6 @@ export default function PageShell({
                   {actionLabel}
                 </Button>
               )}
-
-              <IconButton
-                sx={{
-                  display: { xs: 'none', sm: 'inline-flex' },
-                  bgcolor: alpha('#ffffff', 0.75),
-                  border: `1px solid ${alpha('#1E3932', 0.08)}`,
-                }}
-              >
-                <NotificationsNoneRoundedIcon />
-              </IconButton>
 
               <Paper
                 sx={{

@@ -1,19 +1,22 @@
 import React from 'react';
 import {
-  Card,
-  CardContent,
+  Box,
   Checkbox,
-  FormControlLabel,
+  Chip,
   IconButton,
+  Paper,
   Radio,
   Stack,
   TextField,
+  Tooltip,
+  Typography,
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import { AnswerOption, QuestionType } from '../../shared/types';
 
 interface AnswerOptionFormProps {
   option: AnswerOption;
+  optionNumber: number;
   questionType: QuestionType;
   onUpdate: (content: string, isCorrect: boolean) => void;
   onDelete: () => void;
@@ -21,48 +24,77 @@ interface AnswerOptionFormProps {
 
 export default function AnswerOptionForm({
   option,
+  optionNumber,
   questionType,
   onUpdate,
   onDelete,
 }: AnswerOptionFormProps) {
-  const CorrectControl = questionType === 'SINGLE_CHOICE' ? Radio : Checkbox;
+  const SelectionControl = questionType === 'SINGLE_CHOICE' ? Radio : Checkbox;
 
   return (
-    <Card sx={{ mb: 1.5, borderRadius: 3, boxShadow: 'none', border: '1px solid rgba(148, 163, 184, 0.14)' }}>
-      <CardContent>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
-          <TextField
-            fullWidth
-            size="small"
-            label="Option text"
-            value={option.content}
-            onChange={(event) => onUpdate(event.target.value, option.isCorrect)}
-            multiline
-            rows={2}
-          />
-
-          <FormControlLabel
-            control={
-              <CorrectControl
-                checked={option.isCorrect}
-                onChange={(event) => onUpdate(option.content, event.target.checked)}
-                title="Mark as correct answer"
-              />
-            }
-            label="Correct"
-            sx={{ mr: 0, whiteSpace: 'nowrap' }}
-          />
-
-          <IconButton
-            size="small"
-            color="error"
-            onClick={onDelete}
-            title="Delete option"
+    <Paper
+      elevation={0}
+      sx={{
+        p: 1.5,
+        borderRadius: 4,
+        border: option.isCorrect
+          ? '1px solid rgba(0,117,74,0.28)'
+          : '1px solid rgba(30,57,50,0.08)',
+        backgroundColor: option.isCorrect ? 'rgba(0,117,74,0.04)' : 'rgba(255,255,255,0.98)',
+      }}
+    >
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={1.5}
+        alignItems={{ sm: 'center' }}
+      >
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 88 }}>
+          <Box
+            sx={{
+              width: 34,
+              height: 34,
+              borderRadius: 2.5,
+              display: 'grid',
+              placeItems: 'center',
+              bgcolor: 'rgba(0,117,74,0.08)',
+              color: 'var(--academy-green)',
+              fontWeight: 700,
+              flexShrink: 0,
+            }}
           >
-            <DeleteIcon />
-          </IconButton>
+            {String(optionNumber).padStart(2, '0')}
+          </Box>
+          <SelectionControl
+            checked={option.isCorrect}
+            onChange={(event) => onUpdate(option.content, event.target.checked)}
+          />
         </Stack>
-      </CardContent>
-    </Card>
+
+        <TextField
+          fullWidth
+          size="small"
+          label="Option text"
+          value={option.content}
+          onChange={(event) => onUpdate(event.target.value, option.isCorrect)}
+          placeholder="Write the answer option here"
+        />
+
+        <Stack direction="row" spacing={0.75} alignItems="center" sx={{ flexShrink: 0 }}>
+          {option.isCorrect && (
+            <Chip label="Correct" size="small" color="success" variant="outlined" />
+          )}
+          {!option.isCorrect && (
+            <Typography variant="caption" color="text.secondary">
+              Candidate
+            </Typography>
+          )}
+          <Tooltip title="Delete option">
+            <IconButton color="error" onClick={onDelete}>
+              <DeleteOutlineRoundedIcon />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      </Stack>
+    </Paper>
   );
 }

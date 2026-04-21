@@ -6,6 +6,7 @@ import app              from "./app";
 import { connectMongo }              from "./config/mongodb";
 import { connectOracle }             from "./config/oracle";
 import { connectRedis, redisClient } from "./config/redis";
+import { createSwaggerRouter }       from "./docs/swagger";
 
 // MongoDB init scripts — tạo collections + indexes cho từng Context
 import { initQuizMongo }        from "./modules/quiz/infrastructure/scripts/init-mongo";
@@ -89,6 +90,7 @@ const startServer = async (): Promise<void> => {
   });
 
   // Identity Context — login / logout / reset-password
+  app.use(createSwaggerRouter());
   app.use("/auth", createAuthRouter(oracleConnection, redisClient));
 
   // Academic Context — Teacher/Student dashboard sections
