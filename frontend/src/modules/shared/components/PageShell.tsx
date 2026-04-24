@@ -430,6 +430,7 @@ export default function PageShell({
             >
               {!isDesktop && (
                 <IconButton
+                  aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
                   onClick={handleMenuToggle}
                   sx={{
                     bgcolor: alpha('#ffffff', 0.9),
@@ -459,7 +460,10 @@ export default function PageShell({
                     value={searchInput}
                     onChange={(event) => setSearchInput(event.target.value)}
                     placeholder={getSearchPlaceholder(state.user?.role)}
-                    sx={{ flex: 1 }}
+                    inputProps={{
+                      'aria-label': getSearchPlaceholder(state.user?.role),
+                    }}
+                    sx={{ flex: 1, minWidth: 0 }}
                   />
                 </Paper>
               )}
@@ -571,7 +575,8 @@ export default function PageShell({
             position: 'fixed',
             right: { xs: 16, md: 28 },
             bottom: { xs: 16, md: 28 },
-            zIndex: theme.zIndex.snackbar,
+            display: { xs: mobileOpen ? 'none' : 'flex', md: 'flex' },
+            zIndex: theme.zIndex.speedDial,
           }}
         >
           <AutoAwesomeRoundedIcon />

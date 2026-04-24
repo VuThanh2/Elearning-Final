@@ -589,6 +589,9 @@ export default function QuizEditorPage() {
                     setIsDirty(true);
                   }}
                   placeholder="Enter quiz title"
+                  multiline
+                  minRows={1}
+                  maxRows={3}
                   variant="standard"
                   InputProps={{
                     disableUnderline: true,
@@ -596,13 +599,14 @@ export default function QuizEditorPage() {
                       px: 0,
                       py: 0,
                       alignItems: 'flex-start',
-                      '& input': {
+                      '& textarea': {
                         fontSize: { xs: '2rem', md: '3rem' },
                         fontWeight: 700,
-                        lineHeight: 1.05,
-                        letterSpacing: '-0.03em',
+                        lineHeight: 1.12,
+                        letterSpacing: 0,
                         color: 'var(--deep-slate)',
-                        fontFamily: 'var(--font-serif)',
+                        fontFamily: 'var(--font-ui)',
+                        overflowWrap: 'anywhere',
                       },
                     },
                   }}

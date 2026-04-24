@@ -1,0 +1,57 @@
+{
+  "quizTitle": "Codex UI Test Quiz 2026-04-24T03-49-03-900Z",
+  "screenshots": [
+    "D:\\kiet\\hk6\\csdl_advance\\final_db\\Elearning-Final-main\\output\\playwright\\flow-teacher-section-before-create.png",
+    "D:\\kiet\\hk6\\csdl_advance\\final_db\\Elearning-Final-main\\output\\playwright\\flow-teacher-editor-filled.png",
+    "D:\\kiet\\hk6\\csdl_advance\\final_db\\Elearning-Final-main\\output\\playwright\\flow-teacher-editor-saved.png",
+    "D:\\kiet\\hk6\\csdl_advance\\final_db\\Elearning-Final-main\\output\\playwright\\flow-teacher-editor-published.png",
+    "D:\\kiet\\hk6\\csdl_advance\\final_db\\Elearning-Final-main\\output\\playwright\\flow-student-section-with-new-quiz.png"
+  ],
+  "console": [
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    }
+  ],
+  "failedRequests": [
+    {
+      "url": "http://localhost:3000/academic/sections/teaching",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:5173/vite.svg",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3000/academic/sections/teaching",
+      "failure": "net::ERR_ABORTED"
+    }
+  ],
+  "steps": [
+    "teacher login ok",
+    "draft saved at http://127.0.0.1:5173/teacher/quiz/88a34200-e871-46b2-9055-443ca41e1b25/edit?sectionId=s001-0000-0000-0000-000000000001",
+    "quiz published",
+    "student login ok"
+  ],
+  "error": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('div, article, section').filter({ hasText: 'Codex UI Test Quiz 2026-04-24T03-49-03-900Z' }).first().getByRole('button', { name: 'Start Quiz' })\u001b[22m\n\n    at [stdin]:84:62"
+}

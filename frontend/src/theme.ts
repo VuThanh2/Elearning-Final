@@ -66,7 +66,7 @@ export const theme = createTheme({
     divider: alpha(colors.deepSlate, 0.1),
   },
   shape: {
-    borderRadius: 12,
+    borderRadius: 8,
   },
   typography: {
     fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
@@ -80,19 +80,19 @@ export const theme = createTheme({
       fontSize: '2.4rem',
       fontWeight: 600,
       lineHeight: 1.4,
-      letterSpacing: '-0.01em',
+      letterSpacing: 0,
     },
     h3: {
       fontSize: '2rem',
       fontWeight: 600,
       lineHeight: 1.2,
-      letterSpacing: '-0.02em',
+      letterSpacing: 0,
     },
     h4: {
       fontSize: '1.9rem',
       fontWeight: 600,
       lineHeight: 1.3,
-      letterSpacing: '-0.01em',
+      letterSpacing: 0,
     },
     h5: {
       fontSize: '1.6rem',
@@ -125,7 +125,7 @@ export const theme = createTheme({
     overline: {
       fontSize: '0.75rem',
       lineHeight: 1.5,
-      letterSpacing: '0.14em',
+      letterSpacing: 0,
       fontWeight: 600,
       textTransform: 'uppercase',
     },
@@ -159,6 +159,7 @@ export const theme = createTheme({
           '--font-ui': 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
           '--font-serif': 'Lora, Merriweather, Georgia, serif',
           '--font-script': 'Kalam, "Comic Sans MS", cursive',
+          '--font-data': 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         },
         'html, body, #root': {
           minHeight: '100%',
@@ -191,7 +192,7 @@ export const theme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: 12,
+          borderRadius: 8,
           backgroundColor: colors.whiteCanvas,
           border: `1px solid ${alpha(colors.deepSlate, 0.08)}`,
           boxShadow: whisperShadow,

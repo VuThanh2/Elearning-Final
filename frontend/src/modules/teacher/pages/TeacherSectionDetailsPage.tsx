@@ -373,7 +373,7 @@ export default function TeacherSectionDetailsPage() {
                         />
                       </Box>
 
-                      <Typography variant="h6" sx={{ fontWeight: 900, lineHeight: 1.2 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 900, lineHeight: 1.2, overflowWrap: 'anywhere' }}>
                         {quiz.title || 'Untitled quiz'}
                       </Typography>
 

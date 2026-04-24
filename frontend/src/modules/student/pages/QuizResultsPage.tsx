@@ -15,7 +15,6 @@ import {
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { useNotification } from '../../shared';
 import PageShell from '../../shared/components/PageShell';
 import { analyticsService } from '../services/analyticsService';
 import { StudentAnswer, Question } from '../../shared/types';
@@ -26,11 +25,20 @@ interface AnswerReview {
   studentAnswer: StudentAnswer;
 }
 
+const hasReviewQuestion = (review: unknown): review is AnswerReview =>
+  Boolean(
+    review &&
+      typeof review === 'object' &&
+      'question' in review &&
+      (review as AnswerReview).question &&
+      'studentAnswer' in review &&
+      (review as AnswerReview).studentAnswer
+  );
+
 export default function QuizResultsPage() {
   const { quizId, attemptId } = useParams<{ quizId: string; attemptId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { showNotification } = useNotification();
 
   // Get sectionId from navigation state
   const sectionId = (location.state as any)?.sectionId || null;
@@ -55,21 +63,17 @@ export default function QuizResultsPage() {
 
       try {
         setLoading(true);
-        console.log('[QuizResultsPage] ENTRY: attemptId=', attemptId, 'quizId=', quizId, 'sectionId=', sectionId);
+        setError(null);
 
         let finalAttemptId = attemptId;
 
-        // If no attemptId, fetch the latest attempt for this quiz
         if (!finalAttemptId && quizId) {
-          console.log('[QuizResultsPage] No attemptId, fetching latest attempt for quizId=', quizId);
           const results = await analyticsService.getMyQuizResults(quizId);
           if (results.length === 0) {
             setError('No attempts found for this quiz');
             return;
           }
-          // Use the latest attempt
           finalAttemptId = results[0].attemptId;
-          console.log('[QuizResultsPage] Using latest attempt:', finalAttemptId);
         }
 
         if (!finalAttemptId) {
@@ -77,35 +81,17 @@ export default function QuizResultsPage() {
           return;
         }
 
-        // Check if submission response was passed via navigation state
         const submissionResponse = (location.state as any)?.submissionResponse;
-        if (submissionResponse) {
-          console.log('[QuizResultsPage] Using submission response from state');
-          // Use the immediate submission response (most accurate)
-          setScore(submissionResponse.score || 0);
-          setMaxScore(submissionResponse.maxScore || 0);
-          setAnswers(submissionResponse.answers || []);
-          setLoading(false);
-          return;
-        }
-
         const result = await analyticsService.getAnswerReview(finalAttemptId);
-        console.log('[QuizResultsPage] Got answer review for attemptId:', finalAttemptId);
-        console.log('[QuizResultsPage] Full result:', result);
-        console.log('[QuizResultsPage] Result keys:', Object.keys(result || {}));
-        console.log('[QuizResultsPage] answerReview:', result?.answerReview);
-        console.log('[QuizResultsPage] answers:', result?.answers);
-        console.log('[QuizResultsPage] Result:', { score: result?.score, maxScore: result?.maxScore, answerReviewCount: result?.answerReview?.length || 0, answersCount: result?.answers?.length || 0 });
+        const reviewAnswers = Array.isArray(result?.answerReview)
+          ? result.answerReview.filter(hasReviewQuestion)
+          : [];
 
-        setScore(result?.score || result?.totalScore || 0);
-        setMaxScore(result?.maxScore || 0);
-        // Use answerReview if available (new structure), otherwise fallback to answers
-        const answers = result?.answerReview || result?.answers || [];
-        console.log('[QuizResultsPage] Final answers to set:', answers, 'length:', answers?.length);
-        setAnswers(answers);
+        setScore(result?.score ?? result?.totalScore ?? submissionResponse?.score ?? 0);
+        setMaxScore(result?.maxScore ?? submissionResponse?.maxScore ?? 0);
+        setAnswers(reviewAnswers);
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : 'Failed to load results';
-        console.error('[QuizResultsPage] Error loading results:', errMsg);
         setError(errMsg);
       } finally {
         setLoading(false);
@@ -170,7 +156,7 @@ export default function QuizResultsPage() {
       ) : (
         <Stack spacing={3}>
           {answers.filter((review) => review.question).map((review, index) => (
-            <Card key={review.question.id} sx={{ borderRadius: 5, border: '1px solid rgba(148, 163, 184, 0.14)', boxShadow: '0 12px 32px rgba(15, 23, 42, 0.08)', borderLeft: `6px solid ${review.studentAnswer.isCorrect ? '#10b981' : '#ef4444'}` }}>
+            <Card key={review.question.id} sx={{ borderRadius: 3, border: '1px solid rgba(148, 163, 184, 0.14)', boxShadow: '0 12px 32px rgba(15, 23, 42, 0.08)', borderLeft: `6px solid ${review.studentAnswer.isCorrect ? '#10b981' : '#ef4444'}` }}>
               <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
                 <Stack spacing={2}>
                   <Box>
@@ -179,7 +165,9 @@ export default function QuizResultsPage() {
                   </Box>
                   <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                     <Chip icon={review.studentAnswer.isCorrect ? <CheckCircleIcon /> : <CancelIcon />} label={review.studentAnswer.isCorrect ? 'Correct' : 'Incorrect'} color={review.studentAnswer.isCorrect ? 'success' : 'error'} size="small" />
-                    <Typography variant="body2" color="text.secondary">{review.studentAnswer.earnedPoints}/{review.question.answerOptions?.length || 0} points</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {review.studentAnswer.earnedPoints}/{review.question.points ?? review.studentAnswer.earnedPoints} points
+                    </Typography>
                   </Stack>
                   <Stack spacing={1.5}>
                     {review.question.answerOptions?.map((opt) => {

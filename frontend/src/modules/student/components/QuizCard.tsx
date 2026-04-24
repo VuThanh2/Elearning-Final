@@ -24,14 +24,6 @@ interface QuizCardProps {
 export default function QuizCard({ quiz, sectionId, onStartQuiz, onViewResult }: QuizCardProps) {
   const isExpired = new Date(quiz.deadlineAt) < new Date();
 
-  console.log('[QuizCard] RENDER:', {
-    quizTitle: quiz.title,
-    quizId: quiz.id,
-    isExpired,
-    onStartQuizDefined: !!onStartQuiz,
-    onViewResultDefined: !!onViewResult,
-  });
-
   const questionCount = quiz.totalQuestions ?? quiz.questions?.length ?? 0;
 
   return (

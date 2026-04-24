@@ -120,10 +120,11 @@ export default function SectionDetailsPage() {
               <Typography
                 variant="h3"
                 sx={{
-                  fontFamily: 'var(--font-serif)',
-                  fontWeight: 600,
+                  fontFamily: 'var(--font-ui)',
+                  fontWeight: 800,
                   lineHeight: 1.1,
                   color: '#fff',
+                  overflowWrap: 'anywhere',
                 }}
               >
                 {section?.sectionName || 'Section'}
@@ -144,7 +145,7 @@ export default function SectionDetailsPage() {
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }}>
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">Enrolled section</Typography>
-                <Typography variant="h5" sx={{ fontFamily: 'var(--font-serif)', fontWeight: 600, mb: 1 }}>{section.sectionName}</Typography>
+                <Typography variant="h5" sx={{ fontFamily: 'var(--font-ui)', fontWeight: 800, mb: 1, overflowWrap: 'anywhere' }}>{section.sectionName}</Typography>
                 <Typography variant="body2" color="text.secondary">Student: {state.user?.fullName || state.user?.email}</Typography>
               </Box>
               <Stack direction="row" spacing={1} flexWrap="wrap">
@@ -216,9 +217,10 @@ export default function SectionDetailsPage() {
                       variant="h5"
                       sx={{
                         mt: 0.5,
-                        fontFamily: 'var(--font-serif)',
-                        fontWeight: 600,
+                        fontFamily: 'var(--font-ui)',
+                        fontWeight: 800,
                         color: '#fff',
+                        overflowWrap: 'anywhere',
                       }}
                     >
                       {quiz.title || 'Untitled quiz'}

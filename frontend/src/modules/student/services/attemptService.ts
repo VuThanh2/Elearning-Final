@@ -67,44 +67,21 @@ const normalizeAttempt = (data: any): QuizAttempt => ({
   answers: data.answers,
 });
 
-const toRequestErrorInfo = (error: any) => ({
-  message: error?.message,
-  status: error?.response?.status,
-  responseData: error?.response?.data,
-  method: error?.config?.method,
-  url: error?.config?.url,
-  baseURL: error?.config?.baseURL,
-});
-
 export const attemptService = {
   async startAttempt(quizId: string): Promise<StartAttemptResponse> {
     try {
-      console.log('[attemptService.startAttempt] POST /quizzes/:quizId/attempts', { quizId });
       const response = await api.post<any>(`/quizzes/${quizId}/attempts`, {});
-      console.log('[attemptService.startAttempt] raw response (attempts)', response.data);
       const data = response.data?.data ?? response.data;
-      const normalized = normalizeAttemptStart(data);
-      console.log('[attemptService.startAttempt] normalized response (attempts)', normalized);
-      return normalized;
+      return normalizeAttemptStart(data);
     } catch (error: any) {
       const status = error?.response?.status;
-      console.log('[attemptService.startAttempt] primary request failed', {
-        quizId,
-        status,
-        message: error?.message,
-        data: error?.response?.data,
-      });
       if (status !== 404) {
         throw error;
       }
 
-      console.log('[attemptService.startAttempt] fallback POST /quizzes/:quizId/attempt', { quizId });
       const fallback = await api.post<any>(`/quizzes/${quizId}/attempt`, {});
-      console.log('[attemptService.startAttempt] raw response (attempt)', fallback.data);
       const data = fallback.data?.data ?? fallback.data;
-      const normalized = normalizeAttemptStart(data);
-      console.log('[attemptService.startAttempt] normalized response (attempt)', normalized);
-      return normalized;
+      return normalizeAttemptStart(data);
     }
   },
 

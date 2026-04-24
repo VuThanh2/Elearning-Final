@@ -226,10 +226,11 @@ export default function StudentDashboard() {
               variant="h5"
               sx={{
                 mt: 0.5,
-                fontFamily: 'var(--font-serif)',
-                fontWeight: 600,
+                fontFamily: 'var(--font-ui)',
+                fontWeight: 800,
                 lineHeight: 1.2,
                 color: '#fff',
+                overflowWrap: 'anywhere',
               }}
             >
               {section.sectionName}
@@ -353,11 +354,12 @@ export default function StudentDashboard() {
           <Typography
             variant="h3"
             sx={{
-              fontFamily: 'var(--font-serif)',
-              fontWeight: 600,
+              fontFamily: 'var(--font-ui)',
+              fontWeight: 800,
               lineHeight: 1.1,
               color: '#fff',
               maxWidth: 820,
+              overflowWrap: 'anywhere',
             }}
           >
             {heroTitle}
