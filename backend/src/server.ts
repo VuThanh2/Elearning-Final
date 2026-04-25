@@ -1,11 +1,12 @@
 import "dotenv/config";
 import { EventEmitter } from "events";
-import app, { notFoundHandler, globalErrorHandler } from "./app";
+import app              from "./app";
 
 // Config — DB connections
 import { connectMongo }              from "./config/mongodb";
 import { connectOracle }             from "./config/oracle";
 import { connectRedis, redisClient } from "./config/redis";
+import { createSwaggerRouter }       from "./docs/swagger";
 
 // MongoDB init scripts — tạo collections + indexes cho từng Context
 import { initQuizMongo }        from "./modules/quiz/infrastructure/scripts/init-mongo";
@@ -89,6 +90,7 @@ const startServer = async (): Promise<void> => {
   });
 
   // Identity Context — login / logout / reset-password
+  app.use(createSwaggerRouter());
   app.use("/auth", createAuthRouter(oracleConnection, redisClient));
 
   // Academic Context — Teacher/Student dashboard sections
@@ -111,6 +113,7 @@ const startServer = async (): Promise<void> => {
       authenticate,
       authorize(PermissionType.CREATE_QUIZ),
       authorize(PermissionType.ATTEMPT_QUIZ),
+      redisClient,
     ),
   );
 
@@ -141,14 +144,11 @@ const startServer = async (): Promise<void> => {
     ),
   );
 
-  app.use(notFoundHandler);
-  app.use(globalErrorHandler);
-
   // 8. Start HTTP server
   const PORT   = Number(process.env.PORT) || 3000;
   const server = app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
-  });  
+  });
 
   // 9. Graceful shutdown
   // Thứ tự: ngừng HTTP → dừng jobs → unregister listeners → đóng DB

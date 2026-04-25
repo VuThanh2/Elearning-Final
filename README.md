@@ -19,9 +19,6 @@ cp .env.example .env
 Chỉnh `.env` với các giá trị thực:
 ```env
 PORT=3000
-NODE_ENV=development
-ALLOWED_ORIGINS=http://localhost:5173
-
 JWT_SECRET=any_random_string_dai_hon_32_ky_tu
 JWT_EXPIRES_IN=1d
 
@@ -63,18 +60,18 @@ docker ps   # cả 3 container: mongo_lms, redis_lms, oracle_lms đều Up (heal
 
 ```bash
 # Bước 1 — Copy scripts vào container
-docker cp backend/src/modules/identity/infrastructure/scripts/init.sql    oracle_lms:/tmp/identity_init.sql
-docker cp backend/src/modules/identity/infrastructure/scripts/seed.sql    oracle_lms:/tmp/identity_seed.sql
-docker cp backend/src/modules/academic/infrastructure/scripts/init.sql    oracle_lms:/tmp/academic_init.sql
-docker cp backend/src/modules/academic/infrastructure/scripts/seed.sql    oracle_lms:/tmp/academic_seed.sql
-docker cp backend/src/modules/analytic/infrastructure/scripts/init.sql    oracle_lms:/tmp/analytic_init.sql
-
-#Xài cái này nếu cái trên bị lỗi:
 docker cp backend/src/modules/identity/infrastructure/scripts/init.sql  oracle_lms:/var/tmp/1_identity_init.sql
 docker cp backend/src/modules/identity/infrastructure/scripts/seed.sql  oracle_lms:/var/tmp/2_identity_seed.sql
 docker cp backend/src/modules/academic/infrastructure/scripts/init.sql  oracle_lms:/var/tmp/3_academic_init.sql
 docker cp backend/src/modules/academic/infrastructure/scripts/seed.sql  oracle_lms:/var/tmp/4_academic_seed.sql
 docker cp backend/src/modules/analytic/infrastructure/scripts/init.sql  oracle_lms:/var/tmp/5_analytic_init.sql
+`
+#Xài cái này nếu cái trên bị lỗi:
+docker cp backend/src/modules/identity/infrastructure/scripts/init.sql    oracle_lms:/tmp/identity_init.sql
+docker cp backend/src/modules/identity/infrastructure/scripts/seed.sql    oracle_lms:/tmp/identity_seed.sql
+docker cp backend/src/modules/academic/infrastructure/scripts/init.sql    oracle_lms:/tmp/academic_init.sql
+docker cp backend/src/modules/academic/infrastructure/scripts/seed.sql    oracle_lms:/tmp/academic_seed.sql
+docker cp backend/src/modules/analytic/infrastructure/scripts/init.sql    oracle_lms:/tmp/analytic_init.sql
 
 # Bước 2 — Convert CRLF → LF (bắt buộc trên Windows) (chỉ chạy nếu gặp lỗi ở bước 1)
 docker exec oracle_lms bash -c "
@@ -86,12 +83,21 @@ docker exec oracle_lms bash -c "
 "
 
 # Bước 3 — Chạy theo thứ tự (FK dependency)
-Tạo 1 BASH TERMINAL
 docker exec -it oracle_lms bash
 ```
 
-Trong container, chạy lần lượt từng cái:
+Trong container, chạy lần lượt:
 ```bash
+CONN="lms_user/lms_pass_123@//localhost:1521/XEPDB1"
+sqlplus $CONN @/var/tmp/1_identity_init.sql
+sqlplus $CONN @/var/tmp/2_identity_seed.sql
+sqlplus $CONN @/var/tmp/3_academic_init.sql
+sqlplus $CONN @/var/tmp/4_academic_seed.sql
+sqlplus $CONN @/var/tmp/5_analytic_init.sql
+exit
+```
+
+Hoặc các Lệnh này (nếu ở trên bị lỗi):
 sqlplus your_oracle_user/123456@//localhost:1521/XEPDB1 @/tmp/identity_init.sql
 
 sqlplus your_oracle_user/123456@//localhost:1521/XEPDB1 @/tmp/identity_seed.sql
@@ -101,16 +107,6 @@ sqlplus your_oracle_user/123456@//localhost:1521/XEPDB1 @/tmp/academic_init.sql
 sqlplus your_oracle_user/123456@//localhost:1521/XEPDB1 @/tmp/academic_seed.sql
 
 sqlplus your_oracle_user/123456@//localhost:1521/XEPDB1 @/tmp/analytic_init.sql
-```
-
-Hoặc các Lệnh này (nếu ở trên bị lỗi):
-CONN="lms_user/lms_pass_123@//localhost:1521/XEPDB1"
-sqlplus $CONN @/var/tmp/1_identity_init.sql
-sqlplus $CONN @/var/tmp/2_identity_seed.sql
-sqlplus $CONN @/var/tmp/3_academic_init.sql
-sqlplus $CONN @/var/tmp/4_academic_seed.sql
-sqlplus $CONN @/var/tmp/5_analytic_init.sql
-exit
 
 Output đúng: chỉ có `Table created.` và `1 row created.` — **không có** `SP2-0734` hay `ORA-XXXXX`.
 
@@ -120,7 +116,7 @@ Output đúng: chỉ có `Table created.` và `1 row created.` — **không có*
 
 ## 4. Chạy Server
 
-```Terminal
+```bash
 cd backend
 npm run dev
 ```
@@ -149,10 +145,10 @@ curl http://localhost:3000/
 | Teacher | nguyen.van.an@school.edu.vn  | Teacher@123 | → SE-A
 | Teacher | tran.thi.bich@school.edu.vn  | Teacher@123 | → SE-B
 | Teacher | le.minh.duc@school.edu.vn    | Teacher@123 | → CSDB-A
-| Student | pham.quoc.bao@school.edu.vn  | Student@123 | → SE-A, SE-B
-| Student | hoang.thi.mai@school.edu.vn  | Student@123 | → SE-A, CSDB-A
-| Student | vu.dinh.khoa@school.edu.vn   | Student@123 | → SE-B, CSDB-A
-| Student | do.thanh.tuyen@school.edu.vn | Student@123 | → CSDB-A
+| Student | sv001@student.school.edu.vn  | Student@123 | → SE-A, SE-B
+| Student | sv002@student.school.edu.vn  | Student@123 | → SE-A, CSDB-A
+| Student | sv003@student.school.edu.vn   | Student@123 | → SE-B, CSDB-A
+| Student | sv004@student.school.edu.vn | Student@123 | → CSDB-A
 
 ---
 
@@ -220,7 +216,14 @@ docker exec mongo_lms mongosh --eval "use lms_db; show collections"
 
 ---
 
-## 8. Tắt / Reset
+## 8. run front end
+
+```bash
+cd frontend
+npm run dev
+```
+
+## 9. Tắt / Reset
 
 ```bash
 # Tắt server: Ctrl+C  (graceful shutdown tự động)

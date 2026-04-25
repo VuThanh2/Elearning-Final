@@ -27,15 +27,30 @@ export class MongoAnalyticsRepository implements IMongoAnalyticsRepository {
   async findAnswerViewByAttempt(
     attemptId: string,
   ): Promise<StudentQuizAnswerView | null> {
+    console.log('[MongoAnalyticsRepository.findAnswerViewByAttempt] ENTRY: attemptId=', attemptId);
     // _id = attemptId — findById() dùng _id index mặc định của MongoDB
     const doc = await this.studentQuizAnswerModel
       .findById(attemptId)
       .lean<IStudentQuizAnswerDocument>()
       .exec();
 
+    console.log('[MongoAnalyticsRepository.findAnswerViewByAttempt] Found document:', !!doc);
+    if (doc) {
+      console.log('[MongoAnalyticsRepository.findAnswerViewByAttempt] Document keys:', Object.keys(doc));
+      console.log('[MongoAnalyticsRepository.findAnswerViewByAttempt] Document answers count:', (doc as any).answers?.length);
+      console.log('[MongoAnalyticsRepository.findAnswerViewByAttempt] First answer:', (doc as any).answers?.[0]);
+    }
+
     if (!doc) return null;
 
-    return StudentQuizAnswerMapper.toDomain(doc);
+    const view = StudentQuizAnswerMapper.toDomain(doc);
+    console.log('[MongoAnalyticsRepository.findAnswerViewByAttempt] Mapped to domain view:', {
+      attemptId: view.attemptId,
+      answersCount: view.answers?.length,
+      totalScore: view.totalScore,
+      maxScore: view.maxScore,
+    });
+    return view;
   }
 
   async findAnswerViewsByStudentAndQuiz(

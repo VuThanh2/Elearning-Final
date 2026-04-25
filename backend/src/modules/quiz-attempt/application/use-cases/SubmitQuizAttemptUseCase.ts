@@ -38,6 +38,15 @@ export class SubmitQuizAttemptUseCase {
     dto:       SubmitAttemptDTO,
   ): Promise<FinalizeAttemptResponseDTO> {
     // Bước 1: Validate format DTO
+    console.log('[SubmitQuizAttemptUseCase.execute] ENTRY');
+    console.log(`[SubmitQuizAttemptUseCase.execute] studentId: ${studentId}`);
+    console.log(`[SubmitQuizAttemptUseCase.execute] attemptId: ${attemptId}`);
+    console.log(`[SubmitQuizAttemptUseCase.execute] Received DTO:`, JSON.stringify(dto, null, 2));
+    console.log(`[SubmitQuizAttemptUseCase.execute] DTO.answers length: ${dto.answers?.length}`);
+    if (dto.answers && dto.answers.length > 0) {
+      console.log(`[SubmitQuizAttemptUseCase.execute] First answer:`, JSON.stringify(dto.answers[0], null, 2));
+    }
+
     validateSubmitAttempt(dto);
  
     const now = this.dateTimeProvider.now();
@@ -95,8 +104,14 @@ export class SubmitQuizAttemptUseCase {
     const submittedAnswers = new Map<string, string[]>(
       dto.answers.map((item) => [item.questionId, item.selectedOptionIds])
     );
+
+    console.log(`[SubmitQuizAttemptUseCase.execute] submittedAnswers Map size: ${submittedAnswers.size}`);
+    submittedAnswers.forEach((options, qId) => {
+      console.log(`  QuestionId: ${qId}, SelectedOptionIds: [${options.join(', ')}]`);
+    });
  
     // Bước 9: attempt.submit() — domain enforce deadline, timeLimit, gradeAndFinalize()
+    console.log('[SubmitQuizAttemptUseCase.execute] Before submit - attempt.status:', attempt.status);
     attempt.submit({
       submittedAnswers,
       quizGradingData: {
@@ -107,9 +122,12 @@ export class SubmitQuizAttemptUseCase {
       timeLimitMs: gradingData.timeLimitMs,
       deadline:    gradingData.deadlineAt,
     });
- 
+    console.log('[SubmitQuizAttemptUseCase.execute] After submit - attempt.status:', attempt.status);
+
     // Bước 10: Persist
+    console.log('[SubmitQuizAttemptUseCase.execute] Before save - attempt:', { attemptId: attempt.attemptId, status: attempt.status, score: attempt.score.value });
     await this.attemptRepository.save(attempt);
+    console.log('[SubmitQuizAttemptUseCase.execute] After save - attempt saved successfully');
  
     // Build lookup maps để enrich từng answer trong event
     // optionContentMap: optionId → content (dùng cho cả selected và correct)

@@ -107,6 +107,16 @@ export function createAttemptRouter(
     controller.startAttempt.bind(controller),
   );
 
+  // Backward-compatible alias: some frontend flows still call the singular
+  // attempt path when starting a quiz. Keep both so a route mismatch does not
+  // leave the student stuck on the loading screen.
+  router.post(
+    "/quizzes/:quizId/attempt",
+    authenticate,
+    authorizeAttemptQuiz,
+    controller.startAttempt.bind(controller),
+  );
+
   // POST /attempts/:attemptId/submit
   //   Student nộp bài chủ động — chấm điểm, status → Submitted
   //   Permission: ATTEMPT_QUIZ (dùng chung, không cần permission riêng)

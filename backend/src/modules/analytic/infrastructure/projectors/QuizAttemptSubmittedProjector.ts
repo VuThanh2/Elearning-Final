@@ -24,8 +24,8 @@ export class QuizAttemptSubmittedProjector {
   ) {}
 
   async handle(event: AttemptFinalizedEvent, status: "SUBMITTED" | "EXPIRED"): Promise<void> {
+    await this.writeToOracle(event, status);
     await Promise.all([
-      this.writeToOracle(event, status),
       this.writeStudentQuizAnswer(event, status),
       this.writeQuestionFailureRate(event),
     ]);
@@ -62,25 +62,58 @@ export class QuizAttemptSubmittedProjector {
     }
   }
 
-  // Oracle writes (1 transaction) 
+  // Oracle writes (1 transaction)
   private async writeToOracle(event: AttemptFinalizedEvent, status: "SUBMITTED" | "EXPIRED"): Promise<void> {
+    const flowId = `oracle-flow-${event.attemptId}-${Date.now()}`;
+    console.log('[Analytics] writeToOracle:start', { flowId, attemptId: event.attemptId, quizId: event.quizId, sectionId: event.sectionId, status });
     try {
-      await Promise.all([
-        this.upsertQuizPerformance(event),
-        this.upsertStudentQuizResult(event, status),
-        this.upsertAtRiskStudent(event),
-        this.upsertScoreDistribution(event),
-        this.upsertHierarchicalReport(event),
-      ]);
+      console.log('[Analytics] writeToOracle:step', { flowId, step: 'upsertStudentQuizResult:start' });
+      await this.upsertStudentQuizResult(event, status);
+      console.log('[Analytics] writeToOracle:step', { flowId, step: 'upsertStudentQuizResult:end' });
+
+      console.log('[Analytics] writeToOracle:step', { flowId, step: 'upsertQuizPerformance:start' });
+      await this.upsertQuizPerformance(event);
+      console.log('[Analytics] writeToOracle:step', { flowId, step: 'upsertQuizPerformance:end' });
+
+      console.log('[Analytics] writeToOracle:step', { flowId, step: 'upsertAtRiskStudent:start' });
+      await this.upsertAtRiskStudent(event);
+      console.log('[Analytics] writeToOracle:step', { flowId, step: 'upsertAtRiskStudent:end' });
+
+      console.log('[Analytics] writeToOracle:step', { flowId, step: 'upsertScoreDistribution:start' });
+      await this.upsertScoreDistribution(event);
+      console.log('[Analytics] writeToOracle:step', { flowId, step: 'upsertScoreDistribution:end' });
+
+      console.log('[Analytics] writeToOracle:step', { flowId, step: 'upsertHierarchicalReport:start' });
+      await this.upsertHierarchicalReport(event);
+      console.log('[Analytics] writeToOracle:step', { flowId, step: 'upsertHierarchicalReport:end' });
+
+      console.log('[Analytics] writeToOracle:step', { flowId, step: 'upsertClassRankingForSection:start' });
       await this.upsertClassRankingForSection(event);
+      console.log('[Analytics] writeToOracle:step', { flowId, step: 'upsertClassRankingForSection:end' });
+
+      console.log('[Analytics] writeToOracle:step', { flowId, step: 'commit:start' });
       await this.oracleConnection.commit();
+      console.log('[Analytics] writeToOracle:step', { flowId, step: 'commit:end' });
     } catch (err) {
-      await this.oracleConnection.rollback();
-      throw new Error(
-        `QuizAttemptSubmittedProjector.writeToOracle: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
-      );
+      console.error('[Analytics] writeToOracle:error', {
+        flowId,
+        attemptId: event.attemptId,
+        quizId: event.quizId,
+        sectionId: event.sectionId,
+        status,
+        errorMessage: err instanceof Error ? err.message : String(err),
+        errorStack: err instanceof Error ? err.stack : undefined,
+      });
+      try {
+        console.log('[Analytics] writeToOracle:rollback:start', { flowId });
+        await this.oracleConnection.rollback();
+        console.log('[Analytics] writeToOracle:rollback:end', { flowId });
+      } catch (rollbackErr) {
+        console.error('[Analytics] writeToOracle:rollback:error', {
+          flowId,
+          errorMessage: rollbackErr instanceof Error ? rollbackErr.message : String(rollbackErr),
+        });
+      }
     }
   }
 
@@ -91,40 +124,45 @@ export class QuizAttemptSubmittedProjector {
     await this.oracleConnection.execute(
       `MERGE INTO ANALYTICS_QUIZ_PERFORMANCE tgt
        USING (
+         WITH attempt_stats AS (
+           SELECT
+             QUIZ_ID,
+             SECTION_ID,
+             COUNT(*) AS TOTAL_ATTEMPTS,
+             COUNT(DISTINCT STUDENT_ID) AS ATTEMPTED_STUDENTS,
+             ROUND(AVG(SCORE), 2) AS AVERAGE_SCORE,
+             MAX(SCORE) AS HIGHEST_SCORE,
+             MIN(SCORE) AS LOWEST_SCORE
+           FROM ANALYTICS_STUDENT_QUIZ_RESULT
+           WHERE QUIZ_ID = :quizId
+             AND SECTION_ID = :sectionId
+             AND STATUS = 'SUBMITTED'
+           GROUP BY QUIZ_ID, SECTION_ID
+         )
          SELECT
-           :quizId                                             AS QUIZ_ID,
-           :sectionId                                         AS SECTION_ID,
-           :quizTitle                                         AS QUIZ_TITLE,
-           au.UNIT_NAME                                       AS SECTION_NAME,
-           NVL(enr.TOTAL_STUDENTS, 0)                         AS TOTAL_STUDENTS,
-           COUNT(*)                                           AS TOTAL_ATTEMPTS,
-           COUNT(DISTINCT sqr.STUDENT_ID)                     AS ATTEMPTED_STUDENTS,
-           ROUND(AVG(best.BEST_SCORE), 2)                     AS AVERAGE_SCORE,
-           MAX(best.BEST_SCORE)                               AS HIGHEST_SCORE,
-           MIN(best.BEST_SCORE)                               AS LOWEST_SCORE,
-           ROUND(COUNT(DISTINCT sqr.STUDENT_ID)
-             / NULLIF(NVL(enr.TOTAL_STUDENTS, 0), 0), 4)      AS COMPLETION_RATE,
-           SYSTIMESTAMP                                       AS LAST_UPDATED_AT
-         FROM (
-           SELECT STUDENT_ID, MAX(SCORE) AS BEST_SCORE
-           FROM   ANALYTICS_STUDENT_QUIZ_RESULT
-           WHERE  QUIZ_ID    = :quizId
-             AND  SECTION_ID = :sectionId
-             AND  STATUS     = 'SUBMITTED'
-           GROUP BY STUDENT_ID
-         ) best
-         JOIN ANALYTICS_STUDENT_QUIZ_RESULT sqr
-           ON sqr.STUDENT_ID = best.STUDENT_ID
-          AND sqr.QUIZ_ID    = :quizId
-          AND sqr.SECTION_ID = :sectionId
-         JOIN ACADEMIC_UNITS au
-           ON au.UNIT_ID = :sectionId AND au.TYPE = 'SECTION'
+           :quizId                                            AS QUIZ_ID,
+           :sectionId                                          AS SECTION_ID,
+           :quizTitle                                          AS QUIZ_TITLE,
+           au.UNIT_NAME                                        AS SECTION_NAME,
+           NVL(enr.TOTAL_STUDENTS, 0)                          AS TOTAL_STUDENTS,
+           NVL(ast.TOTAL_ATTEMPTS, 0)                          AS TOTAL_ATTEMPTS,
+           NVL(ast.ATTEMPTED_STUDENTS, 0)                      AS ATTEMPTED_STUDENTS,
+           NVL(ast.AVERAGE_SCORE, 0)                           AS AVERAGE_SCORE,
+           NVL(ast.HIGHEST_SCORE, 0)                           AS HIGHEST_SCORE,
+           NVL(ast.LOWEST_SCORE, 0)                            AS LOWEST_SCORE,
+           ROUND(NVL(ast.ATTEMPTED_STUDENTS, 0)
+             / NULLIF(NVL(enr.TOTAL_STUDENTS, 0), 0), 4)       AS COMPLETION_RATE,
+           SYSTIMESTAMP                                        AS LAST_UPDATED_AT
+         FROM ACADEMIC_UNITS au
+         LEFT JOIN attempt_stats ast
+           ON ast.QUIZ_ID = :quizId AND ast.SECTION_ID = :sectionId
          LEFT JOIN (
            SELECT SECTION_ID, COUNT(*) AS TOTAL_STUDENTS
            FROM   ENROLLMENTS
            WHERE  SECTION_ID = :sectionId
            GROUP  BY SECTION_ID
          ) enr ON enr.SECTION_ID = :sectionId
+         WHERE au.UNIT_ID = :sectionId AND au.TYPE = 'SECTION'
        ) src ON (tgt.QUIZ_ID = src.QUIZ_ID AND tgt.SECTION_ID = src.SECTION_ID)
        WHEN MATCHED THEN UPDATE SET
          tgt.QUIZ_TITLE         = src.QUIZ_TITLE,
@@ -211,26 +249,36 @@ export class QuizAttemptSubmittedProjector {
            u.FULL_NAME                                       AS STUDENT_FULLNAME,
            au.UNIT_NAME                                      AS SECTION_NAME,
            NVL(quiz_count.TOTAL_QUIZZES, 0)                  AS TOTAL_QUIZZES,
-           COUNT(DISTINCT best.QUIZ_ID)                      AS ATTEMPTED_QUIZZES,
-           ROUND(AVG(best.BEST_SCORE), 2)                    AS AVERAGE_SCORE,
-           MIN(best.BEST_SCORE)                              AS LOWEST_SCORE,
-           ROUND(COUNT(DISTINCT best.QUIZ_ID)
-             / NULLIF(NVL(quiz_count.TOTAL_QUIZZES, 0), 0), 4) AS QUIZ_PARTICIPATION_RATE,
+           NVL(best_stats.ATTEMPTED_QUIZZES, 0)              AS ATTEMPTED_QUIZZES,
+           NVL(best_stats.AVERAGE_SCORE, 0)                  AS AVERAGE_SCORE,
+           NVL(best_stats.LOWEST_SCORE, 0)                   AS LOWEST_SCORE,
+           ROUND(
+             NVL(best_stats.ATTEMPTED_QUIZZES, 0)
+             / NULLIF(NVL(quiz_count.TOTAL_QUIZZES, 0), 0),
+             4
+           ) AS QUIZ_PARTICIPATION_RATE,
            SYSTIMESTAMP                                      AS LAST_UPDATED_AT
-         FROM (
-           SELECT QUIZ_ID, MAX(SCORE) AS BEST_SCORE
-           FROM   ANALYTICS_STUDENT_QUIZ_RESULT
-           WHERE  STUDENT_ID = :studentId
-             AND  SECTION_ID = :sectionId
-           GROUP BY QUIZ_ID
-         ) best
-         JOIN USERS u ON u.USER_ID = :studentId
+         FROM USERS u
          JOIN ACADEMIC_UNITS au ON au.UNIT_ID = :sectionId AND au.TYPE = 'SECTION'
+         CROSS JOIN (
+           SELECT
+             COUNT(DISTINCT QUIZ_ID) AS ATTEMPTED_QUIZZES,
+             ROUND(AVG(BEST_SCORE), 2) AS AVERAGE_SCORE,
+             MIN(BEST_SCORE) AS LOWEST_SCORE
+           FROM (
+             SELECT QUIZ_ID, MAX(SCORE) AS BEST_SCORE
+             FROM   ANALYTICS_STUDENT_QUIZ_RESULT
+             WHERE  STUDENT_ID = :studentId
+               AND  SECTION_ID = :sectionId
+             GROUP BY QUIZ_ID
+           ) best
+         ) best_stats
          LEFT JOIN (
            SELECT COUNT(DISTINCT QUIZ_ID) AS TOTAL_QUIZZES
            FROM   ANALYTICS_STUDENT_QUIZ_RESULT
            WHERE  SECTION_ID = :sectionId
          ) quiz_count ON 1 = 1
+         WHERE u.USER_ID = :studentId
        ) src ON (tgt.SECTION_ID = src.SECTION_ID AND tgt.STUDENT_ID = src.STUDENT_ID)
        WHEN MATCHED THEN UPDATE SET
          tgt.STUDENT_FULLNAME       = src.STUDENT_FULLNAME,
@@ -318,7 +366,15 @@ export class QuizAttemptSubmittedProjector {
              ) WHERE BEST_SCORE >= :rangeStart
                AND BEST_SCORE ${b.inclusive ? '<=' : '<'} :rangeEnd
            ),
-           tgt.PERCENTAGE = tgt.STUDENT_COUNT / NULLIF(
+           tgt.PERCENTAGE = (
+             SELECT COUNT(DISTINCT STUDENT_ID) FROM (
+               SELECT STUDENT_ID, MAX(SCORE) AS BEST_SCORE
+               FROM   ANALYTICS_STUDENT_QUIZ_RESULT
+               WHERE  QUIZ_ID = :quizId AND SECTION_ID = :sectionId
+               GROUP  BY STUDENT_ID
+             ) WHERE BEST_SCORE >= :rangeStart
+               AND BEST_SCORE ${b.inclusive ? '<=' : '<'} :rangeEnd
+           ) / NULLIF(
              (SELECT TOTAL_RANKED_STUDENTS FROM ANALYTICS_SCORE_DISTRIBUTION
               WHERE QUIZ_ID = :quizId AND SECTION_ID = :sectionId), 0
            )
@@ -343,9 +399,33 @@ export class QuizAttemptSubmittedProjector {
 
   private async upsertHierarchicalReport(e: AttemptFinalizedEvent): Promise<void> {
     // JOIN ACADEMIC_UNITS 3 tầng + COUNT(ENROLLMENTS) — tất cả trong 1 MERGE INTO
-    await this.oracleConnection.execute(
-      `MERGE INTO ANALYTICS_HIERARCHICAL_REPORT tgt
+    const queryId = `hier-upsert-${e.attemptId}-${Date.now()}`;
+    console.log('[QuizAttemptSubmittedProjector.upsertHierarchicalReport] ENTRY', {
+      queryId,
+      attemptId: e.attemptId,
+      quizId: e.quizId,
+      sectionId: e.sectionId,
+      quizTitle: e.quizTitle,
+    });
+    const sql = `MERGE INTO ANALYTICS_HIERARCHICAL_REPORT tgt
        USING (
+         WITH quiz_stats AS (
+           SELECT
+             QUIZ_ID,
+             SECTION_ID,
+             COUNT(*) AS TOTAL_ATTEMPTS,
+             COUNT(DISTINCT STUDENT_ID) AS ATTEMPTED_STUDENTS,
+             ROUND(AVG(SCORE), 2) AS AVERAGE_SCORE,
+             MAX(SUBMITTED_AT) AS LAST_UPDATED_AT
+           FROM ANALYTICS_STUDENT_QUIZ_RESULT
+           WHERE QUIZ_ID = :quizId AND SECTION_ID = :sectionId
+           GROUP BY QUIZ_ID, SECTION_ID
+         ), best AS (
+           SELECT STUDENT_ID, MAX(SCORE) AS BEST_SCORE
+           FROM ANALYTICS_STUDENT_QUIZ_RESULT
+           WHERE QUIZ_ID = :quizId AND SECTION_ID = :sectionId
+           GROUP BY STUDENT_ID
+         )
          SELECT
            f.UNIT_ID   AS FACULTY_ID,   f.UNIT_NAME AS FACULTY_NAME, f.UNIT_CODE AS FACULTY_CODE,
            c.UNIT_ID   AS COURSE_ID,    c.UNIT_NAME AS COURSE_NAME,  c.UNIT_CODE AS COURSE_CODE,
@@ -353,30 +433,20 @@ export class QuizAttemptSubmittedProjector {
            :quizId     AS QUIZ_ID,
            :quizTitle  AS QUIZ_TITLE,
            NVL(enr.TOTAL_STUDENTS, 0)                                AS TOTAL_STUDENTS,
-           COUNT(*)                                                   AS TOTAL_ATTEMPTS,
-           COUNT(DISTINCT best.STUDENT_ID)                            AS ATTEMPTED_STUDENTS,
-           ROUND(COUNT(DISTINCT best.STUDENT_ID)
-             / NULLIF(NVL(enr.TOTAL_STUDENTS, 0), 0), 4)             AS COMPLETION_RATE,
-           ROUND(AVG(best.BEST_SCORE), 2)                             AS AVERAGE_SCORE,
-           SYSTIMESTAMP                                               AS LAST_UPDATED_AT
+           qs.TOTAL_ATTEMPTS                                          AS TOTAL_ATTEMPTS,
+           qs.ATTEMPTED_STUDENTS                                      AS ATTEMPTED_STUDENTS,
+           ROUND(qs.ATTEMPTED_STUDENTS / NULLIF(NVL(enr.TOTAL_STUDENTS, 0), 0), 4) AS COMPLETION_RATE,
+           qs.AVERAGE_SCORE                                           AS AVERAGE_SCORE,
+           qs.LAST_UPDATED_AT                                         AS LAST_UPDATED_AT
          FROM ACADEMIC_UNITS s
          JOIN ACADEMIC_UNITS c ON c.UNIT_ID = s.PARENT_ID AND c.TYPE = 'COURSE'
          JOIN ACADEMIC_UNITS f ON f.UNIT_ID = c.PARENT_ID AND f.TYPE = 'FACULTY'
+         JOIN quiz_stats qs ON qs.QUIZ_ID = :quizId AND qs.SECTION_ID = :sectionId
          LEFT JOIN (
            SELECT SECTION_ID, COUNT(*) AS TOTAL_STUDENTS
            FROM ENROLLMENTS WHERE SECTION_ID = :sectionId GROUP BY SECTION_ID
          ) enr ON enr.SECTION_ID = s.UNIT_ID
-         LEFT JOIN (
-           SELECT STUDENT_ID, MAX(SCORE) AS BEST_SCORE
-           FROM ANALYTICS_STUDENT_QUIZ_RESULT
-           WHERE QUIZ_ID = :quizId AND SECTION_ID = :sectionId
-           GROUP BY STUDENT_ID
-         ) best ON 1 = 1
          WHERE s.UNIT_ID = :sectionId AND s.TYPE = 'SECTION'
-         GROUP BY f.UNIT_ID, f.UNIT_NAME, f.UNIT_CODE,
-                  c.UNIT_ID, c.UNIT_NAME, c.UNIT_CODE,
-                  s.UNIT_ID, s.UNIT_NAME, s.UNIT_CODE,
-                  enr.TOTAL_STUDENTS
        ) src ON (tgt.QUIZ_ID = src.QUIZ_ID AND tgt.SECTION_ID = src.SECTION_ID)
        WHEN MATCHED THEN UPDATE SET
          tgt.FACULTY_ID      = src.FACULTY_ID,   tgt.FACULTY_NAME = src.FACULTY_NAME,
@@ -403,9 +473,13 @@ export class QuizAttemptSubmittedProjector {
          src.SECTION_ID, src.SECTION_NAME, src.SECTION_CODE,
          src.QUIZ_ID, src.QUIZ_TITLE, src.TOTAL_ATTEMPTS, src.ATTEMPTED_STUDENTS,
          src.TOTAL_STUDENTS, src.COMPLETION_RATE, src.AVERAGE_SCORE, src.LAST_UPDATED_AT
-       )`,
+       )`;
+    console.log('[QuizAttemptSubmittedProjector.upsertHierarchicalReport] SQL ready', { queryId, sqlLength: sql.length });
+    await this.oracleConnection.execute(
+      sql,
       { quizId: e.quizId, sectionId: e.sectionId, quizTitle: e.quizTitle },
     );
+    console.log('[QuizAttemptSubmittedProjector.upsertHierarchicalReport] EXECUTE done', { queryId });
   }
 
   private async upsertClassRankingForSection(e: AttemptFinalizedEvent): Promise<void> {
@@ -486,32 +560,59 @@ export class QuizAttemptSubmittedProjector {
 
   // MongoDB writes
   private async writeStudentQuizAnswer(e: AttemptFinalizedEvent, status: "SUBMITTED" | "EXPIRED"): Promise<void> {
-    await this.studentQuizAnswerModel.replaceOne(
-      { _id: e.attemptId },
-      {
-        _id:           e.attemptId,
-        quizId:        e.quizId,
-        studentId:     e.studentId,
-        sectionId:     e.sectionId,
-        totalScore:    e.score,
-        maxScore:      e.maxScore,
-        submittedAt:   e.occurredAt,
-        attemptNumber: e.attemptNumber,
-        status,
-        answers: e.answers.map((a) => ({
-          questionId:             a.questionId,
-          questionContent:        a.questionContent,
-          selectedOptionIds:      [...a.selectedOptionIds],
-          selectedOptionContents: [...a.selectedOptionContents],
-          correctOptionIds:       [...a.correctOptionIds],
-          correctOptionContents:  [...a.correctOptionContents],
-          isCorrect:              a.isCorrect,
-          earnedPoints:           a.earnedPoints,
-          questionPoints:         e.pointsPerQuestion,
-        })),
-      },
-      { upsert: true },
-    ).exec();
+    console.log('[QuizAttemptSubmittedProjector.writeStudentQuizAnswer] ENTRY');
+    console.log('[QuizAttemptSubmittedProjector.writeStudentQuizAnswer] attemptId:', e.attemptId);
+    console.log('[QuizAttemptSubmittedProjector.writeStudentQuizAnswer] answers count:', e.answers?.length);
+    console.log('[QuizAttemptSubmittedProjector.writeStudentQuizAnswer] First answer:', e.answers?.[0]);
+
+    const percentage = e.maxScore > 0
+      ? Math.round((e.score / e.maxScore) * 10000) / 10000
+      : 0;
+
+    const data = {
+      _id:           e.attemptId,
+      quizId:        e.quizId,
+      quizTitle:     e.quizTitle,
+      studentId:     e.studentId,
+      sectionId:     e.sectionId,
+      score:         e.score,
+      maxScore:      e.maxScore,
+      percentage:    percentage,
+      startedAt:     e.startedAt,
+      submittedAt:   e.occurredAt,
+      durationSeconds: Math.floor((e.occurredAt.getTime() - e.startedAt.getTime()) / 1000),
+      attemptNumber: e.attemptNumber,
+      status,
+      answers: e.answers.map((a) => ({
+        questionId:             a.questionId,
+        questionContent:        a.questionContent,
+        selectedOptionIds:      [...a.selectedOptionIds],
+        selectedOptionContents: [...a.selectedOptionContents],
+        correctOptionIds:       [...a.correctOptionIds],
+        correctOptionContents:  [...a.correctOptionContents],
+        isCorrect:              a.isCorrect,
+        earnedPoints:           a.earnedPoints,
+        questionPoints:         e.pointsPerQuestion,
+      })),
+    };
+
+    console.log('[QuizAttemptSubmittedProjector.writeStudentQuizAnswer] Writing to MongoDB:', {
+      attemptId: data._id,
+      answersLength: data.answers?.length,
+      firstAnswer: data.answers?.[0],
+    });
+
+    try {
+      const result = await this.studentQuizAnswerModel.replaceOne(
+        { _id: e.attemptId },
+        data,
+        { upsert: true },
+      ).exec();
+      console.log('[QuizAttemptSubmittedProjector.writeStudentQuizAnswer] SUCCESS:', result);
+    } catch (err) {
+      console.error('[QuizAttemptSubmittedProjector.writeStudentQuizAnswer] FAILED:', err);
+      throw err;
+    }
   }
 
   private async writeQuestionFailureRate(e: AttemptFinalizedEvent): Promise<void> {

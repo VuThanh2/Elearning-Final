@@ -110,7 +110,7 @@ const QuizSchema = new Schema<IQuizDocument>(
       default: [],
     },
 
-    hiddenReason: { type: String, default: null },
+    hiddenReason: { type: Schema.Types.Mixed, default: null },
 
     // createdAt/updatedAt tự quản lý thay vì dùng timestamps: true
     // vì updatedAt trong domain có thể là null (quiz chưa từng được update)

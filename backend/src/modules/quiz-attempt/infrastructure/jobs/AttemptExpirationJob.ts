@@ -80,8 +80,9 @@ export class AttemptExpirationJob {
     for (const attempt of candidates) {
       try {
         const gradingData = await this.quizQueryService.getQuizGradingData(attempt.quizId);
+        const quizSnapshot = await this.quizQueryService.getQuizSnapshot(attempt.quizId);
 
-        if (!gradingData) {
+        if (!gradingData || !quizSnapshot) {
           console.error(
             `AttemptExpirationJob: Không tìm thấy quiz "${attempt.quizId}" ` +
             `cho attempt "${attempt.attemptId}". Bỏ qua.`
@@ -114,6 +115,9 @@ export class AttemptExpirationJob {
             attempt.attemptNumber.value,
             attempt.score.value,
             attempt.score.maxScore,
+            quizSnapshot.quizTitle,
+            attempt.startedAt,
+            gradingData.pointsPerQuestion,
             [],
             now,
           )

@@ -54,6 +54,8 @@ export interface StudentQuestionView {
  
 export interface QuizStudentViewData {
   quizId:            string;
+  quizTitle:         string;
+  description:       string;
   questions:         StudentQuestionView[];
   pointsPerQuestion: number;
 }

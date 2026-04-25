@@ -13,6 +13,7 @@ import { IAnalyticCache, AnalyticCacheKey, AnalyticsCacheTTL } from "../../domai
 export class StudentQuizResultQuery {
   constructor(
     private readonly oracleRepo: IOracleAnalyticsRepository,
+    private readonly mongoModel:  any, // StudentQuizAnswerModel
     private readonly cache:      IAnalyticCache,
   ) {}
 
@@ -25,7 +26,37 @@ export class StudentQuizResultQuery {
     const key    = AnalyticCacheKey.studentResultsBySection(studentId, sectionId);
     const cached = await this.cache.get<StudentQuizResultDTO[]>(key);
     if (cached) return cached;
- 
+
+    // Try MongoDB first (more reliable than Oracle with projection issues)
+    try {
+      const mongoData = await this.mongoModel
+        .find({ studentId, sectionId })
+        .sort({ submittedAt: -1 })
+        .lean();
+
+      if (mongoData && mongoData.length > 0) {
+        const dtos = mongoData.map((doc: any) => ({
+          attemptId:       doc._id,
+          quizId:          doc.quizId,
+          sectionId:       doc.sectionId,
+          quizTitle:       doc.quizTitle || 'Untitled Quiz',
+          score:           doc.score || 0,
+          maxScore:        doc.maxScore || 100,
+          percentage:      (doc.percentage !== undefined) ? doc.percentage : ((doc.score || 0) / (doc.maxScore || 100)),
+          startedAt:       doc.startedAt?.toISOString() || new Date().toISOString(),
+          submittedAt:     doc.submittedAt?.toISOString() || new Date().toISOString(),
+          durationSeconds: doc.durationSeconds || 0,
+          attemptNumber:   doc.attemptNumber || 1,
+          status:          'SUBMITTED' as AttemptStatus,
+        }));
+        await this.cache.set(key, dtos, AnalyticsCacheTTL.NORMAL);
+        return dtos;
+      }
+    } catch (err) {
+      console.warn(`[StudentQuizResultQuery] MongoDB query failed for section: ${err}`);
+    }
+
+    // Fallback to Oracle
     const views = await this.oracleRepo.findStudentResultsBySection(studentId, sectionId);
     const dtos  = views.map((view) => this.toDTO(view));
     await this.cache.set(key, dtos, AnalyticsCacheTTL.NORMAL);
@@ -41,7 +72,37 @@ export class StudentQuizResultQuery {
     const key    = AnalyticCacheKey.studentResultsByQuiz(studentId, quizId);
     const cached = await this.cache.get<StudentQuizResultDTO[]>(key);
     if (cached) return cached;
- 
+
+    // Try MongoDB first
+    try {
+      const mongoData = await this.mongoModel
+        .find({ studentId, quizId })
+        .sort({ attemptNumber: 1 })
+        .lean();
+
+      if (mongoData && mongoData.length > 0) {
+        const dtos = mongoData.map((doc: any) => ({
+          attemptId:       doc._id,
+          quizId:          doc.quizId,
+          sectionId:       doc.sectionId,
+          quizTitle:       doc.quizTitle || 'Untitled Quiz',
+          score:           doc.score || 0,
+          maxScore:        doc.maxScore || 100,
+          percentage:      (doc.percentage !== undefined) ? doc.percentage : ((doc.score || 0) / (doc.maxScore || 100)),
+          startedAt:       doc.startedAt?.toISOString() || new Date().toISOString(),
+          submittedAt:     doc.submittedAt?.toISOString() || new Date().toISOString(),
+          durationSeconds: doc.durationSeconds || 0,
+          attemptNumber:   doc.attemptNumber || 1,
+          status:          'SUBMITTED' as AttemptStatus,
+        }));
+        await this.cache.set(key, dtos, AnalyticsCacheTTL.NORMAL);
+        return dtos;
+      }
+    } catch (err) {
+      console.warn(`[StudentQuizResultQuery] MongoDB query failed for quiz: ${err}`);
+    }
+
+    // Fallback to Oracle
     const views = await this.oracleRepo.findStudentResultsByQuiz(studentId, quizId);
     const dtos  = views.map((view) => this.toDTO(view));
     await this.cache.set(key, dtos, AnalyticsCacheTTL.NORMAL);
