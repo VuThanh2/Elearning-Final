@@ -37,8 +37,57 @@ export class QuizAttemptRepository implements IQuizAttemptRepository {
     studentId: string,
     quizId: string,
   ): Promise<number> {
-    return this.attemptModel
+    const count = await this.attemptModel
       .countDocuments({ studentId, quizId })
+      .exec();
+    console.log('[QuizAttemptRepository.countByStudentAndQuiz]', { studentId, quizId, count });
+    return count;
+  }
+
+  // Tìm attempt đang InProgress cho student+quiz — prevent multiple active attempts
+  async findInProgressByStudentAndQuiz(
+    studentId: string,
+    quizId: string,
+  ): Promise<QuizAttempt | null> {
+    console.log('[QuizAttemptRepository.findInProgressByStudentAndQuiz] ENTRY', { studentId, quizId });
+    const doc = await this.attemptModel
+      .findOne({ studentId, quizId, status: AttemptStatus.IN_PROGRESS })
+      .lean<IQuizAttemptDocument>()
+      .exec();
+
+    if (!doc) {
+      console.log('[QuizAttemptRepository.findInProgressByStudentAndQuiz] No InProgress attempt found');
+      return null;
+    }
+
+    console.log('[QuizAttemptRepository.findInProgressByStudentAndQuiz] Found InProgress:', { attemptId: doc._id, status: doc.status });
+    return QuizAttemptMapper.toDomain(doc);
+  }
+
+  // Đếm số InProgress attempts — detect race condition
+  async countInProgressByStudentAndQuiz(
+    studentId: string,
+    quizId: string,
+  ): Promise<number> {
+    const count = await this.attemptModel
+      .countDocuments({ studentId, quizId, status: AttemptStatus.IN_PROGRESS })
+      .exec();
+    return count;
+  }
+
+  // Xóa tất cả InProgress attempts ngoại trừ keepAttemptId
+  async deleteOlderInProgressAttempts(
+    studentId: string,
+    quizId: string,
+    keepAttemptId: string,
+  ): Promise<void> {
+    const result = await this.attemptModel
+      .deleteMany({
+        studentId,
+        quizId,
+        status: AttemptStatus.IN_PROGRESS,
+        _id: { $ne: keepAttemptId },
+      })
       .exec();
   }
 
@@ -52,6 +101,7 @@ export class QuizAttemptRepository implements IQuizAttemptRepository {
   // attempt phải được saveNewAttempt() trước. Throw để lộ bug sớm.
   async save(attempt: QuizAttempt): Promise<void> {
     const update = QuizAttemptMapper.toFinalizedUpdate(attempt);
+    console.log('[QuizAttemptRepository.save] ENTRY:', { attemptId: attempt.attemptId, updateData: update });
 
     const result = await this.attemptModel
       .updateOne(
@@ -59,6 +109,8 @@ export class QuizAttemptRepository implements IQuizAttemptRepository {
         { $set: update },
       )
       .exec();
+
+    console.log('[QuizAttemptRepository.save] MongoDB result:', { attemptId: attempt.attemptId, matchedCount: result.matchedCount, modifiedCount: result.modifiedCount });
 
     if (result.matchedCount === 0) {
       throw new Error(

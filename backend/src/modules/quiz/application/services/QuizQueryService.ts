@@ -31,7 +31,9 @@ export class QuizQueryService implements IQuizQueryService {
   // Trả về null nếu quiz không tồn tại — caller (StartAttemptUseCase)
   // sẽ throw NotFoundError phù hợp.
   async getQuizSnapshot(quizId: string): Promise<QuizSnapshot | null> {
+    console.log('[QuizQueryService.getQuizSnapshot] start', { quizId });
     const quiz = await this.quizRepository.findById(quizId);
+    console.log('[QuizQueryService.getQuizSnapshot] end', quiz ? { quizId: quiz.quizId, status: quiz.status, questionCount: quiz.questions.length } : null);
 
     if (!quiz) return null;
 
@@ -54,7 +56,9 @@ export class QuizQueryService implements IQuizQueryService {
   // isCorrect bị omit hoàn toàn — anti-corruption layer:
   // Quiz Context tự lọc trước khi expose ra ngoài.
   async getQuizQuestionsForStudent(quizId: string): Promise<QuizStudentViewData | null> {
+    console.log('[QuizQueryService.getQuizQuestionsForStudent] start', { quizId });
     const quiz = await this.quizRepository.findById(quizId);
+    console.log('[QuizQueryService.getQuizQuestionsForStudent] loaded quiz', quiz ? { quizId: quiz.quizId, questionCount: quiz.questions.length } : null);
     if (!quiz) return null;
  
     const questions      = [...quiz.questions];
@@ -79,7 +83,9 @@ export class QuizQueryService implements IQuizQueryService {
     });
  
     return {
-      quizId,
+      quizId:            quiz.quizId,
+      quizTitle:         quiz.title,
+      description:       quiz.description,
       questions:         studentQuestions,
       pointsPerQuestion,
     };
@@ -107,15 +113,34 @@ export class QuizQueryService implements IQuizQueryService {
 
     const pointsPerQuestion = quiz.maxScore.value / totalQuestions;
 
+    console.log('[QuizQueryService.getQuizGradingData] Starting grading data extraction');
+    console.log(`[QuizQueryService.getQuizGradingData] Quiz: ${quizId}, Total Questions: ${totalQuestions}`);
+
+    const gradingQuestions = questions.map((q) => {
+      const correctOptions = [...q.correctOptions];
+      const correctOptionIds = correctOptions.map((opt) => opt.optionId);
+
+      console.log(`[QuizQueryService.getQuizGradingData] Question ${q.questionId}:`);
+      console.log(`  Total answerOptions: ${[...q.answerOptions].length}`);
+      console.log(`  Correct options count: ${correctOptionIds.length}`);
+      console.log(`  All options:`);
+      [...q.answerOptions].forEach((opt, idx) => {
+        console.log(`    [${idx}] ID: ${opt.optionId}, Content: ${opt.content}, isCorrect: ${opt.isCorrect}`);
+      });
+      console.log(`  Extracted correctOptionIds: [${correctOptionIds.join(', ')}]`);
+
+      return {
+        questionId:       q.questionId,
+        correctOptionIds,
+      };
+    });
+
     return {
       quizId:           quiz.quizId,
       maxScore:         quiz.maxScore.value,
       timeLimitMs:       quiz.timeLimit.minutes * 60_000,
       deadlineAt:        quiz.deadline.value,
-      questions:        questions.map((q) => ({
-        questionId:       q.questionId,
-        correctOptionIds: [...q.correctOptions].map((opt) => opt.optionId),
-      })),
+      questions:        gradingQuestions,
       pointsPerQuestion,
     };
   }

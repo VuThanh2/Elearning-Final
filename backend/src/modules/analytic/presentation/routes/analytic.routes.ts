@@ -98,12 +98,12 @@ export function createAnalyticsRouter(
   // Academic Context — dùng chung cho Query cần verify section assignment
   const academicService = createAcademicQueryService(oracleConnection);
 
-  // Application: Queries 
-  const quizPerformanceQuery     = new QuizPerformanceQuery(oracleRepo, academicService, cache);
-  const studentQuizResultQuery   = new StudentQuizResultQuery(oracleRepo, cache);
-  const atRiskStudentQuery       = new AtRiskStudentQuery(oracleRepo, academicService, cache);
+  // Application: Queries
+  const quizPerformanceQuery     = new QuizPerformanceQuery(oracleRepo, academicService, StudentQuizAnswerModel, cache);
+  const studentQuizResultQuery   = new StudentQuizResultQuery(oracleRepo, StudentQuizAnswerModel, cache);
+  const atRiskStudentQuery       = new AtRiskStudentQuery(oracleRepo, academicService, StudentQuizAnswerModel, cache);
   const studentClassRankingQuery = new StudentClassRankingQuery(oracleRepo, cache);
-  const scoreDistributionQuery   = new ScoreDistributionQuery(oracleRepo, academicService, cache);
+  const scoreDistributionQuery   = new ScoreDistributionQuery(oracleRepo, academicService, StudentQuizAnswerModel, cache);
   const hierarchicalReportQuery  = new HierarchicalQuizReportQuery(oracleRepo, cache);
   const studentQuizAnswerQuery   = new StudentQuizAnswerQuery(mongoRepo, cache);
   const questionFailureRateQuery = new QuestionFailureRateQuery(mongoRepo, academicService, cache);

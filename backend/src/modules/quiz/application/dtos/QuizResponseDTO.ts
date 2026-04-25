@@ -5,15 +5,18 @@ import { QuestionType } from "../../domain/value-objects/QuestionType";
 
 export interface AnswerOptionResponseDTO {
   optionId:  string;
+  id?:       string;
   content:   string;
   isCorrect: boolean;
 }
 
 export interface QuestionResponseDTO {
   questionId:    string;
+  id?:           string;
   content:       string;
-  questionType:  QuestionType;
+  questionType:  QuestionType | string;
   answerOptions: AnswerOptionResponseDTO[];
+  options?:      AnswerOptionResponseDTO[];
   points:        number;  // hệ thống tự chia đều: maxScore / totalQuestions
 }
 

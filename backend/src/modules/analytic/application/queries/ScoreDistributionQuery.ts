@@ -10,6 +10,7 @@ export class ScoreDistributionQuery {
   constructor(
     private readonly oracleRepo:      IOracleAnalyticsRepository,
     private readonly academicService: IAcademicQueryService,
+    private readonly mongoModel:      any, // StudentQuizAnswerModel
     private readonly cache:      IAnalyticCache,
   ) {}
 
@@ -27,15 +28,80 @@ export class ScoreDistributionQuery {
         `AccessDeniedError: Teacher không được phép xem score distribution của section "${sectionId}".`,
       );
     }
- 
+
     const key    = AnalyticCacheKey.scoreDistribution(quizId, sectionId);
     const cached = await this.cache.get<ScoreDistributionDTO>(key);
     if (cached) return cached;
- 
-    const view = await this.oracleRepo.findScoreDistribution(quizId, sectionId);
-    const dto  = view ? this.toDTO(view) : null;
-    if (dto) await this.cache.set(key, dto, AnalyticsCacheTTL.HEAVY);
-    return dto;
+
+    // Try MongoDB first (aggregates score data)
+    try {
+      const mongoData = await this.mongoModel
+        .find({ quizId, sectionId })
+        .lean()
+        .exec();
+
+      if (mongoData && mongoData.length > 0) {
+        // Get max score from first document
+        const maxScore = mongoData[0].maxScore || 100;
+
+        // Create score buckets (0-20%, 20-40%, etc.)
+        const buckets: ScoreRangeBucketDTO[] = [];
+        const bucketRanges = [
+          { label: '0-20%', pctStart: 0, pctEnd: 0.2 },
+          { label: '20-40%', pctStart: 0.2, pctEnd: 0.4 },
+          { label: '40-60%', pctStart: 0.4, pctEnd: 0.6 },
+          { label: '60-80%', pctStart: 0.6, pctEnd: 0.8 },
+          { label: '80-100%', pctStart: 0.8, pctEnd: 1.0 },
+        ];
+
+        for (const range of bucketRanges) {
+          let count = 0;
+          for (const attempt of mongoData) {
+            const score = attempt.score || 0;
+            const percentage = score / maxScore;
+            if (percentage >= range.pctStart && percentage < range.pctEnd) {
+              count += 1;
+            }
+          }
+
+          buckets.push({
+            label: range.label,
+            rangeStartPct: range.pctStart,
+            rangeEndPct: range.pctEnd,
+            rangeStart: Math.round(range.pctStart * maxScore),
+            rangeEnd: Math.round(range.pctEnd * maxScore),
+            isUpperBoundInclusive: range.pctEnd === 1.0,
+            studentCount: count,
+            percentage: mongoData.length > 0 ? count / mongoData.length : 0,
+          });
+        }
+
+        const dto: ScoreDistributionDTO = {
+          quizId,
+          sectionId,
+          quizTitle: mongoData[0].quizTitle || 'Untitled Quiz',
+          sectionName: sectionId,
+          maxScore,
+          totalRankedStudents: mongoData.length,
+          lastUpdatedAt: new Date().toISOString(),
+          scoreRanges: buckets,
+        };
+
+        await this.cache.set(key, dto, AnalyticsCacheTTL.HEAVY);
+        return dto;
+      }
+    } catch (err) {
+      // Silently fall back to Oracle if MongoDB fails
+    }
+
+    try {
+      const view = await this.oracleRepo.findScoreDistribution(quizId, sectionId);
+      const dto  = view ? this.toDTO(view) : null;
+      if (dto) await this.cache.set(key, dto, AnalyticsCacheTTL.HEAVY);
+      return dto;
+    } catch (err) {
+      throw err;
+    }
   }
 
   // private helpers

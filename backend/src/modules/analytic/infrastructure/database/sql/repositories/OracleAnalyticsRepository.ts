@@ -292,23 +292,107 @@ export class OracleAnalyticsRepository implements IOracleAnalyticsRepository {
   // HierarchicalQuizReportView 
   async findHierarchicalReport(): Promise<HierarchicalQuizReportView[]> {
     try {
+      const queryId = `hier-report-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+      console.log('[OracleAnalyticsRepository.findHierarchicalReport] ENTRY', { queryId });
+      const sql = `SELECT
+           hr.FACULTY_ID, hr.FACULTY_NAME, hr.FACULTY_CODE,
+           hr.COURSE_ID,  hr.COURSE_NAME,  hr.COURSE_CODE,
+           hr.SECTION_ID, hr.SECTION_NAME, hr.SECTION_CODE,
+           hr.QUIZ_ID, hr.QUIZ_TITLE,
+           hr.TOTAL_ATTEMPTS, hr.ATTEMPTED_STUDENTS,
+           NVL(enr.TOTAL_STUDENTS, 0) AS TOTAL_STUDENTS,
+           CASE
+             WHEN NVL(enr.TOTAL_STUDENTS, 0) > 0
+             THEN ROUND(hr.ATTEMPTED_STUDENTS / NVL(enr.TOTAL_STUDENTS, 0), 4)
+             ELSE hr.COMPLETION_RATE
+           END AS COMPLETION_RATE,
+           hr.AVERAGE_SCORE,
+           hr.LAST_UPDATED_AT
+         FROM   ANALYTICS_HIERARCHICAL_REPORT hr
+         LEFT JOIN (
+           SELECT SECTION_ID, COUNT(*) AS TOTAL_STUDENTS
+           FROM   ENROLLMENTS
+           GROUP  BY SECTION_ID
+         ) enr ON enr.SECTION_ID = hr.SECTION_ID
+         ORDER BY hr.FACULTY_ID, hr.COURSE_ID, hr.SECTION_ID, hr.QUIZ_TITLE ASC`;
+      console.log('[OracleAnalyticsRepository.findHierarchicalReport] SQL ready', { queryId, sqlLength: sql.length });
       const result = await this.connection.execute<HierarchicalQuizReportModel>(
-        `SELECT FACULTY_ID, FACULTY_NAME, FACULTY_CODE,
-                COURSE_ID,  COURSE_NAME,  COURSE_CODE,
-                SECTION_ID, SECTION_NAME, SECTION_CODE,
-                QUIZ_ID, QUIZ_TITLE,
-                TOTAL_ATTEMPTS, ATTEMPTED_STUDENTS, TOTAL_STUDENTS,
-                COMPLETION_RATE, AVERAGE_SCORE, LAST_UPDATED_AT
-         FROM   ANALYTICS_HIERARCHICAL_REPORT
-         ORDER BY FACULTY_ID, COURSE_ID, SECTION_ID, QUIZ_TITLE ASC`,
+        sql,
         {},
         { outFormat: oracledb.OUT_FORMAT_OBJECT },
       );
 
-      return HierarchicalQuizReportMapper.toDomainList(result.rows ?? []);
+      const analyticsRows = result.rows ?? [];
+      console.log('[OracleAnalyticsRepository.findHierarchicalReport] Query returned rows count:', analyticsRows.length, { queryId });
+      if (analyticsRows.length > 0) {
+        console.log('[OracleAnalyticsRepository.findHierarchicalReport] First row:', analyticsRows[0], { queryId });
+      } else {
+        console.warn('[OracleAnalyticsRepository.findHierarchicalReport] No analytics rows found, returning empty list', { queryId });
+      }
+
+      const views = HierarchicalQuizReportMapper.toDomainList(analyticsRows);
+      console.log('[OracleAnalyticsRepository.findHierarchicalReport] Mapped to views count:', views.length, { queryId });
+      return views;
     } catch (err) {
+      console.error('[OracleAnalyticsRepository.findHierarchicalReport] ERROR:', err);
       throw new Error(
         `AnalyticsOracleRepository.findHierarchicalReport: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+
+  async findHierarchicalReportFromResults(): Promise<HierarchicalQuizReportView[]> {
+    try {
+      const result = await this.connection.execute<HierarchicalQuizReportModel>(
+        `SELECT
+           f.UNIT_ID   AS FACULTY_ID,
+           f.UNIT_NAME AS FACULTY_NAME,
+           f.UNIT_CODE AS FACULTY_CODE,
+           c.UNIT_ID   AS COURSE_ID,
+           c.UNIT_NAME AS COURSE_NAME,
+           c.UNIT_CODE AS COURSE_CODE,
+           s.UNIT_ID   AS SECTION_ID,
+           s.UNIT_NAME AS SECTION_NAME,
+           s.UNIT_CODE AS SECTION_CODE,
+           r.QUIZ_ID   AS QUIZ_ID,
+           MAX(r.QUIZ_TITLE)                  AS QUIZ_TITLE,
+           COUNT(r.ATTEMPT_ID)                AS TOTAL_ATTEMPTS,
+           COUNT(DISTINCT r.STUDENT_ID)       AS ATTEMPTED_STUDENTS,
+           NVL(enr.TOTAL_STUDENTS, 0)         AS TOTAL_STUDENTS,
+           CASE
+             WHEN NVL(enr.TOTAL_STUDENTS, 0) > 0
+             THEN ROUND(COUNT(DISTINCT r.STUDENT_ID) / NVL(enr.TOTAL_STUDENTS, 0), 4)
+             ELSE 0
+           END AS COMPLETION_RATE,
+           ROUND(AVG(r.SCORE), 2)            AS AVERAGE_SCORE,
+           MAX(r.SUBMITTED_AT)               AS LAST_UPDATED_AT
+         FROM ANALYTICS_STUDENT_QUIZ_RESULT r
+         JOIN ACADEMIC_UNITS s ON s.UNIT_ID = r.SECTION_ID AND s.TYPE = 'SECTION'
+         JOIN ACADEMIC_UNITS c ON c.UNIT_ID = s.PARENT_ID AND c.TYPE = 'COURSE'
+         JOIN ACADEMIC_UNITS f ON f.UNIT_ID = c.PARENT_ID AND f.TYPE = 'FACULTY'
+         LEFT JOIN (
+           SELECT SECTION_ID, COUNT(*) AS TOTAL_STUDENTS
+           FROM ENROLLMENTS
+           GROUP BY SECTION_ID
+         ) enr ON enr.SECTION_ID = r.SECTION_ID
+         GROUP BY
+           f.UNIT_ID, f.UNIT_NAME, f.UNIT_CODE,
+           c.UNIT_ID, c.UNIT_NAME, c.UNIT_CODE,
+           s.UNIT_ID, s.UNIT_NAME, s.UNIT_CODE,
+           r.QUIZ_ID,
+           enr.TOTAL_STUDENTS
+         ORDER BY f.UNIT_ID, c.UNIT_ID, s.UNIT_ID, MAX(r.QUIZ_TITLE) ASC`,
+        {},
+        { outFormat: oracledb.OUT_FORMAT_OBJECT },
+      );
+
+      const rows = result.rows ?? [];
+      return HierarchicalQuizReportMapper.toDomainList(rows);
+    } catch (err) {
+      throw new Error(
+        `AnalyticsOracleRepository.findHierarchicalReportFromResults: ${
           err instanceof Error ? err.message : String(err)
         }`,
       );

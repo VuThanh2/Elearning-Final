@@ -192,11 +192,21 @@ export class QuizAttempt {
   ): void {
     const answers: StudentAnswer[] = [];
 
+    console.log('[QuizAttempt.gradeAndFinalize] Starting grading process');
+    console.log(`[QuizAttempt.gradeAndFinalize] Attempt: ${this.attemptId}`);
+    console.log(`[QuizAttempt.gradeAndFinalize] Total questions to grade: ${gradingData.questions.length}`);
+    console.log(`[QuizAttempt.gradeAndFinalize] Points per question: ${gradingData.pointsPerQuestion}`);
+
     for (const question of gradingData.questions) {
       const selectedOptionIds = submittedAnswers.get(question.questionId);
 
+      console.log(`\n[QuizAttempt.gradeAndFinalize] Question: ${question.questionId}`);
+      console.log(`  Correct options: [${question.correctOptionIds.join(', ')}]`);
+      console.log(`  Student selected: [${selectedOptionIds?.join(', ') ?? '(none)'}]`);
+
       if (!selectedOptionIds || selectedOptionIds.length === 0) {
         // Câu chưa trả lời → tạo answer rỗng với 0 điểm
+        console.log(`  Result: UNANSWERED → 0 points`);
         answers.push(
           StudentAnswer.createUnanswered(question.questionId)
         );
@@ -204,14 +214,16 @@ export class QuizAttempt {
       }
 
       // Câu đã trả lời → chấm đúng/sai
-      answers.push(
-        StudentAnswer.create({
-          questionId:        question.questionId,
-          selectedOptions:   SelectedOptions.create(selectedOptionIds),
-          correctOptionIds:  question.correctOptionIds,
-          pointsPerQuestion: gradingData.pointsPerQuestion,
-        })
-      );
+      const studentAnswer = StudentAnswer.create({
+        questionId:        question.questionId,
+        selectedOptions:   SelectedOptions.create(selectedOptionIds),
+        correctOptionIds:  question.correctOptionIds,
+        pointsPerQuestion: gradingData.pointsPerQuestion,
+      });
+
+      console.log(`  Result: ${studentAnswer.isCorrect ? 'CORRECT' : 'INCORRECT'} → ${studentAnswer.earnedPoints} points`);
+
+      answers.push(studentAnswer);
     }
 
     this._answers     = answers;
@@ -221,6 +233,10 @@ export class QuizAttempt {
     // Tính tổng điểm từ tất cả answers
     const totalEarned = answers.reduce((sum, a) => sum + a.earnedPoints, 0);
     this._score = Score.create(totalEarned, this._score.maxScore);
+
+    console.log(`\n[QuizAttempt.gradeAndFinalize] Grading summary:`);
+    console.log(`  Total points earned: ${totalEarned} / ${this._score.maxScore}`);
+    console.log(`  Correct answers: ${answers.filter(a => a.isCorrect).length} / ${answers.length}`);
   }
 
   // Guards 

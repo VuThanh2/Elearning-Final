@@ -47,10 +47,21 @@ export class SelectedOptions {
   // Logic: student đúng khi và chỉ khi tập hợp đã chọn === tập hợp đáp án đúng
   // (đúng hết, không thừa, không thiếu)
   isCorrect(correctOptionIds: string[]): boolean {
-    if (this._optionIds.length !== correctOptionIds.length) return false;
+    console.log(`  [SelectedOptions.isCorrect] Comparing:`);
+    console.log(`    Selected: [${this._optionIds.join(', ')}] (count: ${this._optionIds.length})`);
+    console.log(`    Correct:  [${correctOptionIds.join(', ')}] (count: ${correctOptionIds.length})`);
+
+    if (this._optionIds.length !== correctOptionIds.length) {
+      console.log(`    Result: FALSE (length mismatch)`);
+      return false;
+    }
 
     const selected = new Set(this._optionIds);
-    return correctOptionIds.every((id) => selected.has(id));
+    const allCorrectPresent = correctOptionIds.every((id) => selected.has(id));
+
+    console.log(`    Result: ${allCorrectPresent ? 'TRUE' : 'FALSE'} (${allCorrectPresent ? 'all correct present in selection' : 'some correct missing'})`);
+
+    return allCorrectPresent;
   }
 
   equals(other: SelectedOptions): boolean {

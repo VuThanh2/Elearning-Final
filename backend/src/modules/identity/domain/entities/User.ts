@@ -1,4 +1,4 @@
-import { FullName } from "../value-objects/FullName";
+import { FullName } from "../value-objects/Fullname";
 import { Password } from "../value-objects/Password";
 import { PermissionType } from "../value-objects/PermissionType";
 import { Role } from "./Role";

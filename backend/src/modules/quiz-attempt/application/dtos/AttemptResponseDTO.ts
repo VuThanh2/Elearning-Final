@@ -16,16 +16,19 @@ import { AttemptStatus } from "../../domain/value-objects/AttemptStatus";
 // isCorrect KHÔNG được trả về ở đây — student chưa được biết đáp án.
 export interface AttemptOptionDTO {
   optionId: string;
+  id?:      string;
   content:  string;
 }
 
 // Thông tin 1 question để student render bài làm.
 export interface AttemptQuestionDTO {
   questionId:    string;
+  id?:           string;
   content:       string;
-  questionType:  string;    // "MultipleChoice"
+  questionType:  string;
   options:       AttemptOptionDTO[];
-  points:        number;    // pointsPerQuestion — để student biết trọng số câu
+  answerOptions?: AttemptOptionDTO[];
+  points:        number;
 }
 
 // Trả về sau POST /quizzes/:quizId/attempts (start attempt thành công).
@@ -39,10 +42,12 @@ export interface AttemptQuestionDTO {
 export interface StartAttemptResponseDTO {
   attemptId:        string;
   quizId:           string;
+  quizTitle:        string;
+  description:      string;
   attemptNumber:    number;
   status:           AttemptStatus;    // luôn là "InProgress"
-  startedAt:        string;           
-  expiresAt:        string;           
+  startedAt:        string;
+  expiresAt:        string;
   timeLimitMinutes: number;           // redundant nhưng tiện cho frontend
   questions:        AttemptQuestionDTO[];
   totalQuestions:   number;

@@ -14,7 +14,8 @@ export class QuizPerformanceQuery {
   constructor(
     private readonly oracleRepo:      IOracleAnalyticsRepository,
     private readonly academicService: IAcademicQueryService,
-    private readonly cache:           IAnalyticCache, 
+    private readonly mongoModel:      any, // StudentQuizAnswerModel
+    private readonly cache:           IAnalyticCache,
   ) {}
 
   // GET /analytics/sections/:sectionId/quizzes/:quizId/performance
@@ -45,15 +46,85 @@ export class QuizPerformanceQuery {
     sectionId: string,
   ): Promise<QuizPerformanceDTO[]> {
     await this.assertTeacherAssigned(teacherId, sectionId);
- 
+
     const key    = AnalyticCacheKey.sectionPerformance(sectionId);
     const cached = await this.cache.get<QuizPerformanceDTO[]>(key);
-    if (cached) return cached;
- 
-    const views = await this.oracleRepo.findQuizPerformanceBySection(sectionId);
-    const dtos  = views.map((view) => this.toDTO(view));
-    await this.cache.set(key, dtos, AnalyticsCacheTTL.NORMAL);
-    return dtos;
+    if (cached && cached.length > 0) {
+      return cached;
+    }
+
+    try {
+      // Query MongoDB directly - much more reliable than Oracle with projection issues
+      const mongoData = await this.mongoModel
+        .find({ sectionId })
+        .lean()
+        .exec();
+
+      if (mongoData && mongoData.length > 0) {
+        // Group by quizId and calculate metrics
+        const quizMap = new Map<string, any>();
+
+        for (const attempt of mongoData) {
+          if (!quizMap.has(attempt.quizId)) {
+            quizMap.set(attempt.quizId, {
+              quizId: attempt.quizId,
+              quizTitle: attempt.quizTitle || 'Untitled Quiz',
+              sectionId: attempt.sectionId,
+              attempts: [],
+              uniqueStudents: new Set<string>(),
+            });
+          }
+
+          const quiz = quizMap.get(attempt.quizId)!;
+          quiz.attempts.push({
+            score: attempt.score || 0,
+            maxScore: attempt.maxScore || 100,
+            studentId: attempt.studentId,
+          });
+          quiz.uniqueStudents.add(attempt.studentId);
+        }
+
+        // Convert to DTOs
+        const dtos: QuizPerformanceDTO[] = Array.from(quizMap.values()).map((quiz: any) => {
+          const totalAttempts = quiz.attempts.length;
+          const attemptedStudents = quiz.uniqueStudents.size;
+          const avgScore = quiz.attempts.length > 0
+            ? quiz.attempts.reduce((sum: number, a: any) => sum + (a.score || 0), 0) / quiz.attempts.length
+            : 0;
+          const highestScore = Math.max(...quiz.attempts.map((a: any) => a.score || 0));
+          const lowestScore = Math.min(...quiz.attempts.map((a: any) => a.score || 0));
+
+          return {
+            quizId: quiz.quizId,
+            sectionId: quiz.sectionId,
+            quizTitle: quiz.quizTitle,
+            sectionName: sectionId,
+            totalAttempts,
+            attemptedStudents,
+            totalStudents: attemptedStudents,
+            averageScore: avgScore,
+            highestScore: isFinite(highestScore) ? highestScore : 0,
+            lowestScore: isFinite(lowestScore) ? lowestScore : 0,
+            completionRate: attemptedStudents > 0 ? attemptedStudents / attemptedStudents : 0,
+            lastUpdatedAt: new Date().toISOString(),
+          };
+        });
+
+        await this.cache.set(key, dtos, AnalyticsCacheTTL.NORMAL);
+        return dtos;
+      }
+    } catch (err) {
+      // Silently fall back to Oracle if MongoDB fails
+    }
+
+    try {
+      const views = await this.oracleRepo.findQuizPerformanceBySection(sectionId);
+      const dtos  = views.map((view) => this.toDTO(view));
+      await this.cache.set(key, dtos, AnalyticsCacheTTL.NORMAL);
+      return dtos;
+    } catch (err) {
+      throw err;
+    }
   }
 
   // private helpers 

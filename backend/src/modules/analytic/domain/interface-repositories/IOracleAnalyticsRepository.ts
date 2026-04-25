@@ -106,6 +106,10 @@ export interface IOracleAnalyticsRepository {
   // Sắp xếp: facultyId → courseId → sectionId → quizId.
   findHierarchicalReport(): Promise<HierarchicalQuizReportView[]>;
 
+  // Fallback: build hierarchical report trực tiếp từ quiz result data
+  // khi bảng analytics hierarchy chưa có bản ghi.
+  findHierarchicalReportFromResults(): Promise<HierarchicalQuizReportView[]>;
+
   // Lấy flat list giới hạn trong 1 faculty.
   // Dùng bởi: Admin drill-down vào Faculty.
   findHierarchicalReportByFaculty(
