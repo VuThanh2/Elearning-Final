@@ -1,0 +1,68 @@
+# Logs
+*.log
+logs/
+*.log.*
+
+# Dependencies
+node_modules/
+backend/__pycache__/
+backend/*.pyc
+backend/*.pyo
+backend/*.pyd
+backend/.Python
+backend/*.so
+backend/*.egg-info/
+backend/dist/
+backend/build/
+backend/venv/
+backend/env/
+
+# IDE và Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.cursor/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.cache
+output/
+memory/
+
+# File ảnh và PDF không cần thiết
+handout.jpg
+ui1.jpg
+ui2.jpg
+ui3.jpg
+*.jpg
+*.png
+*.gif
+*.pdf
+
+# Memory (nếu không cần thiết cho repo)
+memory/
+
+# Giữ lại 2 file start-dev (KHÔNG thêm vào đây)
+# start-dev.sh
+# start-dev.bat
+
+# Backend specific
+backend/.env
+backend/.env.local
+backend/instance/
+backend/webpack-stats.json
+
+# Frontend specific
+frontend/build/
+frontend/dist/
+frontend/.env
+frontend/.env.local
