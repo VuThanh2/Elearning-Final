@@ -124,20 +124,26 @@ export class QuizAttemptSubmittedProjector {
     await this.oracleConnection.execute(
       `MERGE INTO ANALYTICS_QUIZ_PERFORMANCE tgt
        USING (
-         WITH attempt_stats AS (
-           SELECT
-             QUIZ_ID,
-             SECTION_ID,
-             COUNT(*) AS TOTAL_ATTEMPTS,
-             COUNT(DISTINCT STUDENT_ID) AS ATTEMPTED_STUDENTS,
-             ROUND(AVG(SCORE), 2) AS AVERAGE_SCORE,
-             MAX(SCORE) AS HIGHEST_SCORE,
-             MIN(SCORE) AS LOWEST_SCORE
+         WITH finalized AS (
+           SELECT *
            FROM ANALYTICS_STUDENT_QUIZ_RESULT
            WHERE QUIZ_ID = :quizId
              AND SECTION_ID = :sectionId
-             AND STATUS = 'SUBMITTED'
-           GROUP BY QUIZ_ID, SECTION_ID
+             AND STATUS IN ('SUBMITTED', 'EXPIRED')
+         ), student_best AS (
+           SELECT STUDENT_ID, MAX(SCORE) AS BEST_SCORE
+           FROM finalized
+           GROUP BY STUDENT_ID
+         ), attempt_stats AS (
+           SELECT
+             :quizId AS QUIZ_ID,
+             :sectionId AS SECTION_ID,
+             (SELECT COUNT(*) FROM finalized) AS TOTAL_ATTEMPTS,
+             (SELECT COUNT(*) FROM student_best) AS ATTEMPTED_STUDENTS,
+             ROUND((SELECT AVG(BEST_SCORE) FROM student_best), 2) AS AVERAGE_SCORE,
+             (SELECT MAX(BEST_SCORE) FROM student_best) AS HIGHEST_SCORE,
+             (SELECT MIN(BEST_SCORE) FROM student_best) AS LOWEST_SCORE
+           FROM DUAL
          )
          SELECT
            :quizId                                            AS QUIZ_ID,
@@ -145,6 +151,7 @@ export class QuizAttemptSubmittedProjector {
            :quizTitle                                          AS QUIZ_TITLE,
            au.UNIT_NAME                                        AS SECTION_NAME,
            NVL(enr.TOTAL_STUDENTS, 0)                          AS TOTAL_STUDENTS,
+           :maxScore                                           AS MAX_SCORE,
            NVL(ast.TOTAL_ATTEMPTS, 0)                          AS TOTAL_ATTEMPTS,
            NVL(ast.ATTEMPTED_STUDENTS, 0)                      AS ATTEMPTED_STUDENTS,
            NVL(ast.AVERAGE_SCORE, 0)                           AS AVERAGE_SCORE,
@@ -168,6 +175,7 @@ export class QuizAttemptSubmittedProjector {
          tgt.QUIZ_TITLE         = src.QUIZ_TITLE,
          tgt.SECTION_NAME       = src.SECTION_NAME,
          tgt.TOTAL_STUDENTS     = src.TOTAL_STUDENTS,
+         tgt.MAX_SCORE          = src.MAX_SCORE,
          tgt.TOTAL_ATTEMPTS     = src.TOTAL_ATTEMPTS,
          tgt.ATTEMPTED_STUDENTS = src.ATTEMPTED_STUDENTS,
          tgt.AVERAGE_SCORE      = src.AVERAGE_SCORE,
@@ -177,16 +185,16 @@ export class QuizAttemptSubmittedProjector {
          tgt.LAST_UPDATED_AT    = src.LAST_UPDATED_AT
        WHEN NOT MATCHED THEN INSERT (
          QUIZ_ID, SECTION_ID, QUIZ_TITLE, SECTION_NAME,
-         TOTAL_STUDENTS, TOTAL_ATTEMPTS, ATTEMPTED_STUDENTS,
+         TOTAL_STUDENTS, MAX_SCORE, TOTAL_ATTEMPTS, ATTEMPTED_STUDENTS,
          AVERAGE_SCORE, HIGHEST_SCORE, LOWEST_SCORE,
          COMPLETION_RATE, LAST_UPDATED_AT
        ) VALUES (
          src.QUIZ_ID, src.SECTION_ID, src.QUIZ_TITLE, src.SECTION_NAME,
-         src.TOTAL_STUDENTS, src.TOTAL_ATTEMPTS, src.ATTEMPTED_STUDENTS,
+         src.TOTAL_STUDENTS, src.MAX_SCORE, src.TOTAL_ATTEMPTS, src.ATTEMPTED_STUDENTS,
          src.AVERAGE_SCORE, src.HIGHEST_SCORE, src.LOWEST_SCORE,
          src.COMPLETION_RATE, src.LAST_UPDATED_AT
        )`,
-      { quizId: e.quizId, sectionId: e.sectionId, quizTitle: e.quizTitle },
+      { quizId: e.quizId, sectionId: e.sectionId, quizTitle: e.quizTitle, maxScore: e.maxScore },
     );
   }
 
@@ -257,6 +265,11 @@ export class QuizAttemptSubmittedProjector {
              / NULLIF(NVL(quiz_count.TOTAL_QUIZZES, 0), 0),
              4
            ) AS QUIZ_PARTICIPATION_RATE,
+           CASE
+             WHEN NVL(best_stats.AVERAGE_SCORE_RATE, 0) < 0.50 THEN 'HIGH'
+             WHEN NVL(best_stats.AVERAGE_SCORE_RATE, 0) < 0.70 THEN 'MEDIUM'
+             ELSE 'LOW'
+           END AS AVG_SCORE_RISK_LEVEL,
            SYSTIMESTAMP                                      AS LAST_UPDATED_AT
          FROM USERS u
          JOIN ACADEMIC_UNITS au ON au.UNIT_ID = :sectionId AND au.TYPE = 'SECTION'
@@ -264,9 +277,10 @@ export class QuizAttemptSubmittedProjector {
            SELECT
              COUNT(DISTINCT QUIZ_ID) AS ATTEMPTED_QUIZZES,
              ROUND(AVG(BEST_SCORE), 2) AS AVERAGE_SCORE,
-             MIN(BEST_SCORE) AS LOWEST_SCORE
+             MIN(BEST_SCORE) AS LOWEST_SCORE,
+             ROUND(AVG(BEST_PERCENTAGE), 4) AS AVERAGE_SCORE_RATE
            FROM (
-             SELECT QUIZ_ID, MAX(SCORE) AS BEST_SCORE
+             SELECT QUIZ_ID, MAX(SCORE) AS BEST_SCORE, MAX(PERCENTAGE) AS BEST_PERCENTAGE
              FROM   ANALYTICS_STUDENT_QUIZ_RESULT
              WHERE  STUDENT_ID = :studentId
                AND  SECTION_ID = :sectionId
@@ -292,6 +306,7 @@ export class QuizAttemptSubmittedProjector {
            WHEN src.QUIZ_PARTICIPATION_RATE < 0.50 THEN 'HIGH'
            WHEN src.QUIZ_PARTICIPATION_RATE < 0.80 THEN 'MEDIUM'
            ELSE 'LOW' END,
+         tgt.AVG_SCORE_RISK_LEVEL = src.AVG_SCORE_RISK_LEVEL,
          tgt.LAST_UPDATED_AT        = src.LAST_UPDATED_AT
        WHEN NOT MATCHED THEN INSERT (
          SECTION_ID, STUDENT_ID, STUDENT_FULLNAME, SECTION_NAME,
@@ -301,7 +316,14 @@ export class QuizAttemptSubmittedProjector {
        ) VALUES (
          src.SECTION_ID, src.STUDENT_ID, src.STUDENT_FULLNAME, src.SECTION_NAME,
          src.TOTAL_QUIZZES, src.ATTEMPTED_QUIZZES, src.AVERAGE_SCORE, src.LOWEST_SCORE,
-         src.QUIZ_PARTICIPATION_RATE, 'LOW', 'LOW', src.LAST_UPDATED_AT
+         src.QUIZ_PARTICIPATION_RATE,
+         CASE
+           WHEN src.QUIZ_PARTICIPATION_RATE < 0.50 THEN 'HIGH'
+           WHEN src.QUIZ_PARTICIPATION_RATE < 0.80 THEN 'MEDIUM'
+           ELSE 'LOW'
+         END,
+         src.AVG_SCORE_RISK_LEVEL,
+         src.LAST_UPDATED_AT
        )`,
       { sectionId: e.sectionId, studentId: e.studentId },
     );

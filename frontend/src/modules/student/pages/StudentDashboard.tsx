@@ -14,7 +14,6 @@ import {
   Typography,
 } from '@mui/material';
 import SchoolRoundedIcon from '@mui/icons-material/SchoolRounded';
-import QuizRoundedIcon from '@mui/icons-material/QuizRounded';
 import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded';
 import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded';
 import PageShell from '../../shared/components/PageShell';
@@ -431,53 +430,6 @@ export default function StudentDashboard() {
         </Grid>
       )}
 
-      {view === 'overview' && sections.length > 0 && (
-        <Card
-          sx={{
-            mt: 3,
-            borderRadius: 5,
-            border: '1px solid rgba(30,57,50,0.08)',
-            boxShadow: '0 0 0.5px rgba(0,0,0,0.14), 0 1px 1px rgba(0,0,0,0.24)',
-            background:
-              'linear-gradient(135deg, rgba(255,255,255,0.86) 0%, rgba(255,255,255,1) 100%)',
-          }}
-        >
-          <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={7}>
-                <Typography variant="h6" sx={{ fontWeight: 900, mb: 1 }}>
-                  Suggested next step
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 620 }}>
-                  Start in the section with your next quiz, then open analytics after submission to compare your standing and performance trends.
-                </Typography>
-              </Grid>
-              <Grid item xs={12} md={5}>
-                <Stack direction={{ xs: 'column', sm: 'row', md: 'column' }} spacing={1.5}>
-                  <Button
-                    variant="contained"
-                    startIcon={<QuizRoundedIcon />}
-                    onClick={() => navigate(`/student/sections/${sections[0].sectionId}`)}
-                  >
-                    Continue with quizzes
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={<AnalyticsRoundedIcon />}
-                    onClick={() =>
-                      navigate(`/student/sections/${sections[0].sectionId}/analytics`, {
-                        state: getAnalyticsNavigationState(sections[0]),
-                      })
-                    }
-                  >
-                    Open analytics
-                  </Button>
-                </Stack>
-              </Grid>
-            </Grid>
-          </CardContent>
-        </Card>
-      )}
     </PageShell>
   );
 }

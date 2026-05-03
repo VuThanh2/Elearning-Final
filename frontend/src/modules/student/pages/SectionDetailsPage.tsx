@@ -41,6 +41,21 @@ export default function SectionDetailsPage() {
       }
     : undefined;
 
+  const isQuizStartable = (quiz: Quiz) => {
+    const isExpired = quiz.deadlineAt ? new Date(quiz.deadlineAt) < new Date() : false;
+    const attemptsRemaining = quiz.attemptsRemaining ?? quiz.maxAttempts ?? 0;
+    return Boolean(quiz.canStart) && attemptsRemaining > 0 && !isExpired;
+  };
+
+  const readyToStartCount = quizzes.filter(isQuizStartable).length;
+
+  const getAttemptLabel = (quiz: Quiz) => {
+    const total = quiz.maxAttempts ?? 0;
+    const remaining = quiz.attemptsRemaining ?? total;
+    const used = quiz.attemptsUsed ?? Math.max(total - remaining, 0);
+    return `${remaining}/${total} attempts left (${used} used)`;
+  };
+
   useEffect(() => {
     const fetchSection = async () => {
       if (!sectionId) {
@@ -172,7 +187,7 @@ export default function SectionDetailsPage() {
           <Card sx={{ borderRadius: 4, boxShadow: '0 0 0.5px rgba(0,0,0,0.14), 0 1px 1px rgba(0,0,0,0.24)' }}>
             <CardContent>
               <Typography color="text.secondary" gutterBottom>Ready to Start</Typography>
-              <Typography variant="h4" sx={{ fontWeight: 800, color: 'success.main' }}>{quizzes.length}</Typography>
+              <Typography variant="h4" sx={{ fontWeight: 800, color: 'success.main' }}>{readyToStartCount}</Typography>
             </CardContent>
           </Card>
         </Grid>
@@ -206,8 +221,8 @@ export default function SectionDetailsPage() {
                   }}
                 >
                   <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                    <Chip label="Available" size="small" sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.14)' }} />
-                    {quiz.maxAttempts ? <Chip label={`${quiz.maxAttempts} attempts`} size="small" sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }} /> : null}
+                    <Chip label={isQuizStartable(quiz) ? 'Available' : 'Attempts used'} size="small" sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.14)' }} />
+                    {quiz.maxAttempts ? <Chip label={getAttemptLabel(quiz)} size="small" sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }} /> : null}
                   </Stack>
                   <Box>
                     <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.72)' }}>
@@ -240,9 +255,20 @@ export default function SectionDetailsPage() {
                   <Box sx={{ width: '76%', height: '100%', bgcolor: 'var(--action-green)' }} />
                 </Box>
                 <CardActions sx={{ px: 2, pb: 2, gap: 1 }}>
-                  <Button fullWidth variant="contained" startIcon={<PlayArrowIcon />} onClick={() => navigate(`/student/quiz/${quiz.quizId}/attempt`)}>
-                    Start Quiz
-                  </Button>
+                  {isQuizStartable(quiz) && (
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      startIcon={<PlayArrowIcon />}
+                      onClick={() =>
+                        navigate(`/student/quiz/${quiz.quizId}/attempt`, {
+                          state: { sectionId, ...analyticsNavigationState },
+                        })
+                      }
+                    >
+                      Start Quiz
+                    </Button>
+                  )}
                   <Button
                     fullWidth
                     variant="outlined"

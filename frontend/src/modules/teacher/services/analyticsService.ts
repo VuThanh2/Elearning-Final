@@ -9,6 +9,33 @@ import {
   HierarchicalReportNode,
 } from '../../shared/types';
 
+const toSafeNumber = (value: unknown): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const normalizeRatio = (value: unknown): number => {
+  const parsed = toSafeNumber(value);
+  if (parsed <= 0) return 0;
+  return parsed > 1 ? parsed / 100 : parsed;
+};
+
+const normalizeAtRiskStudent = (value: any): AtRiskStudent => ({
+  studentId: String(value?.studentId ?? ''),
+  studentName: value?.studentName ?? value?.studentFullname ?? '',
+  studentFullname: value?.studentFullname ?? value?.studentName ?? '',
+  riskLevel: value?.riskLevel ?? value?.participationRiskLevel ?? value?.averageScoreRiskLevel ?? 'LOW',
+  participationRate: normalizeRatio(value?.participationRate ?? value?.quizParticipationRate),
+  totalQuizzes: toSafeNumber(value?.totalQuizzes),
+  attemptedQuizzes: toSafeNumber(value?.attemptedQuizzes),
+  quizParticipationRate: normalizeRatio(value?.quizParticipationRate ?? value?.participationRate),
+  averageScore: toSafeNumber(value?.averageScore),
+  lowestScore: value?.lowestScore == null ? undefined : toSafeNumber(value.lowestScore),
+  participationRiskLevel: value?.participationRiskLevel ?? value?.riskLevel ?? 'LOW',
+  averageScoreRiskLevel: value?.averageScoreRiskLevel ?? value?.riskLevel ?? 'LOW',
+  lastAttemptDate: value?.lastAttemptDate,
+});
+
 export const analyticsService = {
   // Teacher Analytics
   async getQuizPerformance(sectionId: string): Promise<QuizPerformance[]> {
@@ -34,11 +61,11 @@ export const analyticsService = {
     );
     // Backend returns wrapped response with students array
     if (Array.isArray(response.data)) {
-      return response.data;
+      return response.data.map(normalizeAtRiskStudent);
     }
     // If wrapped, extract students array
     if (response.data?.students && Array.isArray(response.data.students)) {
-      return response.data.students;
+      return response.data.students.map(normalizeAtRiskStudent);
     }
     return [];
   },

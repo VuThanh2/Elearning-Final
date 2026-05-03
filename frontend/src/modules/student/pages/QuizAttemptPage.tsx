@@ -288,7 +288,15 @@ export default function QuizAttemptPage() {
           <CardContent>
             <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-              <Button onClick={() => setShowLeaveConfirm(true)} variant="outlined">Go Back</Button>
+              <Button
+                onClick={() => {
+                  if (sectionId) navigate(`/student/sections/${sectionId}`, { replace: true });
+                  else navigate('/student/dashboard?view=quizzes', { replace: true });
+                }}
+                variant="outlined"
+              >
+                Go Back
+              </Button>
             </Stack>
           </CardContent>
         </Card>

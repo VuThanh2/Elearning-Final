@@ -104,6 +104,9 @@ export interface Quiz {
   updatedAt?: string | null;
   totalQuestions?: number;   // Backend includes this
   questionPoints?: number;   // Backend includes this
+  attemptsUsed?: number;
+  attemptsRemaining?: number;
+  canStart?: boolean;
 }
 
 export interface CreateQuizRequest {
@@ -177,8 +180,12 @@ export interface QuizPerformance {
   quizTitle: string;
   sectionId: string;
   totalAttempts: number;
+  attemptedStudents?: number;
+  totalStudents?: number;
   completionRate: number;
   averageScore: number;
+  highestScore?: number;
+  lowestScore?: number;
   maxScore: number;
 }
 
@@ -202,10 +209,17 @@ export interface StudentQuizResult {
 
 export interface AtRiskStudent {
   studentId: string;
-  studentName: string;
-  riskLevel: 'HIGH' | 'MEDIUM' | 'LOW';
-  participationRate: number;
+  studentName?: string;
+  studentFullname?: string;
+  riskLevel?: 'HIGH' | 'MEDIUM' | 'LOW';
+  participationRate?: number;
+  totalQuizzes?: number;
+  attemptedQuizzes?: number;
+  quizParticipationRate?: number;
   averageScore: number;
+  lowestScore?: number;
+  participationRiskLevel?: 'HIGH' | 'MEDIUM' | 'LOW';
+  averageScoreRiskLevel?: 'HIGH' | 'MEDIUM' | 'LOW';
   lastAttemptDate?: string;
 }
 
