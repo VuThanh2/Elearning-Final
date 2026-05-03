@@ -47,7 +47,7 @@ export class StudentQuizResultQuery {
           submittedAt:     doc.submittedAt?.toISOString() || new Date().toISOString(),
           durationSeconds: doc.durationSeconds || 0,
           attemptNumber:   doc.attemptNumber || 1,
-          status:          'SUBMITTED' as AttemptStatus,
+          status:          (doc.status === 'EXPIRED' ? 'EXPIRED' : 'SUBMITTED') as AttemptStatus,
         }));
         await this.cache.set(key, dtos, AnalyticsCacheTTL.NORMAL);
         return dtos;
@@ -93,7 +93,7 @@ export class StudentQuizResultQuery {
           submittedAt:     doc.submittedAt?.toISOString() || new Date().toISOString(),
           durationSeconds: doc.durationSeconds || 0,
           attemptNumber:   doc.attemptNumber || 1,
-          status:          'SUBMITTED' as AttemptStatus,
+          status:          (doc.status === 'EXPIRED' ? 'EXPIRED' : 'SUBMITTED') as AttemptStatus,
         }));
         await this.cache.set(key, dtos, AnalyticsCacheTTL.NORMAL);
         return dtos;

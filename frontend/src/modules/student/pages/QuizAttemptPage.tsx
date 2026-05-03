@@ -143,7 +143,7 @@ export default function QuizAttemptPage() {
     setTimeExpired(true);
     try {
       setSubmitting(true);
-      await submitCurrentAttempt();
+      await expireCurrentAttempt();
     } catch (err) {
       showNotification(err instanceof Error ? err.message : 'Failed to submit quiz', 'error');
       setSubmitting(false);
@@ -211,15 +211,17 @@ export default function QuizAttemptPage() {
 
   const handleSubmitClick = () => setShowSubmitConfirm(true);
 
-  const submitCurrentAttempt = async () => {
-    if (!attemptId || !quizId || !quiz) return;
+  const buildSubmitData = (): SubmitAttemptRequest | null => {
+    if (!attemptId || !quizId || !quiz) return null;
 
-    const submitData: SubmitAttemptRequest = {
+    return {
       answers: quiz.questions.map((q) => ({ questionId: q.id, selectedOptionIds: answers.get(q.id) || [] })),
     };
+  };
 
-    const submitResponse = await attemptService.submitAttempt(attemptId, submitData);
-    showNotification('Quiz submitted successfully!', 'success');
+  const finishAttempt = (submissionResponse: unknown) => {
+    if (!attemptId || !quizId) return;
+
     setShowSubmitConfirm(false);
     setHasStarted(false);
     initializedRef.current = false;
@@ -229,8 +231,26 @@ export default function QuizAttemptPage() {
     activeAttemptKeyRef.current = null;
     navigate(`/student/quiz/${quizId}/results/${attemptId}`, {
       replace: true,
-      state: { submissionResponse: submitResponse, sectionId },
+      state: { submissionResponse, sectionId },
     });
+  };
+
+  const submitCurrentAttempt = async () => {
+    const submitData = buildSubmitData();
+    if (!attemptId || !quizId || !submitData) return;
+
+    const submitResponse = await attemptService.submitAttempt(attemptId, submitData);
+    showNotification('Quiz submitted successfully!', 'success');
+    finishAttempt(submitResponse);
+  };
+
+  const expireCurrentAttempt = async () => {
+    const submitData = buildSubmitData();
+    if (!attemptId || !quizId || !submitData) return;
+
+    const submitResponse = await attemptService.expireAttempt(attemptId, submitData);
+    showNotification('Time expired. Quiz auto-submitted.', 'warning');
+    finishAttempt(submitResponse);
   };
 
   const handleSubmit = async () => {
