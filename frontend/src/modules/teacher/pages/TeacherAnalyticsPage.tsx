@@ -52,13 +52,29 @@ export default function TeacherAnalyticsPage() {
   const safeNumber = (value: number | null | undefined): number =>
     value == null || !Number.isFinite(value) ? 0 : value;
 
+  const formatCompactNumber = (value: number | null | undefined, maxDecimals = 1): string => {
+    const normalized = safeNumber(value);
+    if (Number.isInteger(normalized)) return String(normalized);
+    return normalized.toFixed(maxDecimals).replace(/\.?0+$/, '');
+  };
+
   const formatScoreValue = (value: number | null | undefined): string =>
-    formatters.formatNumber(safeNumber(value), 1);
+    formatCompactNumber(value, 1);
 
   const formatScoreWithMax = (
     value: number | null | undefined,
     maxScore: number | null | undefined
   ): string => `${formatScoreValue(value)}/${formatScoreValue(maxScore)}`;
+
+  const formatScoreRangeLabel = (
+    start: number | null | undefined,
+    end: number | null | undefined,
+    isUpperBoundInclusive?: boolean
+  ): string => {
+    const startLabel = formatCompactNumber(start, 1);
+    const endLabel = formatCompactNumber(end, 1);
+    return isUpperBoundInclusive ? `${startLabel}-${endLabel}` : `${startLabel}-<${endLabel}`;
+  };
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -151,6 +167,11 @@ export default function TeacherAnalyticsPage() {
         setScoreDistribution(scoreRanges.map((bucket) => ({
           ...bucket,
           label: bucket.label || `${bucket.rangeStart}-${bucket.rangeEnd}`,
+          scoreRangeLabel: formatScoreRangeLabel(
+            bucket.rangeStart,
+            bucket.rangeEnd,
+            bucket.isUpperBoundInclusive
+          ),
           minScore: bucket.rangeStart,
           maxScore: bucket.rangeEnd,
           count: bucket.studentCount,
@@ -215,17 +236,17 @@ export default function TeacherAnalyticsPage() {
           <Card sx={{ borderRadius: 4, boxShadow: '0 12px 32px rgba(15, 23, 42, 0.08)' }}>
             <CardContent>
               <Typography variant="h6" sx={{ fontWeight: 800, mb: 2 }}>Quiz Performance</Typography>
-              <TableContainer component={Paper} sx={{ boxShadow: 'none', border: '1px solid rgba(148, 163, 184, 0.14)', overflowX: 'auto' }}>
-                <Table size="small" sx={{ minWidth: 860 }}>
+              <TableContainer component={Paper} sx={{ boxShadow: 'none', border: '1px solid rgba(148, 163, 184, 0.14)', overflowX: 'visible' }}>
+                <Table size="small" sx={{ width: '100%', tableLayout: 'fixed', '& .MuiTableCell-root': { px: 1 } }}>
                   <TableHead sx={{ bgcolor: 'rgba(15, 118, 110, 0.06)' }}>
                     <TableRow>
-                      <TableCell sx={{ fontWeight: 700 }}>Quiz</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700 }}>Attempts</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700 }}>Students</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700 }}>Completion</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700 }}>Average Score</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700 }}>Highest</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700 }}>Lowest</TableCell>
+                      <TableCell sx={{ fontWeight: 700, width: '22%' }}>Quiz</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700, width: '13%' }}>Attempts</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700, width: '13%' }}>Students</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700, width: '16%' }}>Completion</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700, width: '14%' }}>Average Score</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700, width: '11%' }}>Highest</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700, width: '11%' }}>Lowest</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -233,7 +254,7 @@ export default function TeacherAnalyticsPage() {
                       <TableRow><TableCell colSpan={7} align="center"><Typography variant="body2" color="text.secondary">No quiz data yet</Typography></TableCell></TableRow>
                     ) : performance.map((perf) => (
                       <TableRow key={perf.quizId} hover>
-                        <TableCell>{perf.quizTitle}</TableCell>
+                        <TableCell sx={{ overflowWrap: 'anywhere' }}>{perf.quizTitle}</TableCell>
                         <TableCell align="right">{perf.totalAttempts}</TableCell>
                         <TableCell align="right">{safeNumber(perf.attemptedStudents)}/{safeNumber(perf.totalStudents)}</TableCell>
                         <TableCell align="right"><Chip label={formatters.formatPercentage(perf.completionRate, 1)} color={perf.completionRate >= 0.8 ? 'success' : 'warning'} size="small" variant="outlined" /></TableCell>
@@ -320,14 +341,20 @@ export default function TeacherAnalyticsPage() {
           <Grid item xs={12} md={6}>
             <Card sx={{ borderRadius: 4, boxShadow: '0 12px 32px rgba(15, 23, 42, 0.08)' }}>
               <CardContent>
-                <Typography variant="h6" sx={{ fontWeight: 800, mb: 2 }}>Score Distribution</Typography>
+                <Typography variant="h6" sx={{ fontWeight: 800 }}>Score Distribution</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Students by score range
+                </Typography>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={scoreDistribution}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="label" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="studentCount" fill="#0f766e" radius={[8, 8, 0, 0]} />
+                    <XAxis dataKey="scoreRangeLabel" />
+                    <YAxis allowDecimals={false} tickFormatter={(value) => String(Math.round(Number(value)))} />
+                    <Tooltip
+                      formatter={(value) => [formatCompactNumber(Number(value), 0), 'Students']}
+                      labelFormatter={(label) => `Score range ${label}`}
+                    />
+                    <Bar dataKey="studentCount" fill="#0f766e" radius={[8, 8, 0, 0]} isAnimationActive={false} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -336,34 +363,47 @@ export default function TeacherAnalyticsPage() {
         )}
 
         {questionFailureRows.length > 0 && (
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12}>
             <Card sx={{ borderRadius: 4, boxShadow: '0 12px 32px rgba(15, 23, 42, 0.08)' }}>
               <CardContent>
-                <Typography variant="h6" sx={{ fontWeight: 800, mb: 2 }}>Question Difficulty</Typography>
+                <Typography variant="h6" sx={{ fontWeight: 800 }}>Question Difficulty</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Failure rate by question (%)
+                </Typography>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={questionFailureRows}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="questionLabel" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="failureRate" fill="#f59e0b" radius={[8, 8, 0, 0]} />
+                    <YAxis
+                      domain={[0, 1]}
+                      ticks={[0, 0.25, 0.5, 0.75, 1]}
+                      tickFormatter={(value) => formatters.formatPercentage(Number(value), 0)}
+                    />
+                    <Tooltip
+                      formatter={(value, name) =>
+                        name === 'failureRate'
+                          ? [formatters.formatPercentage(Number(value), 1), 'Failure rate']
+                          : [value as number, name as string]
+                      }
+                    />
+                    <Bar dataKey="failureRate" fill="#f59e0b" radius={[8, 8, 0, 0]} isAnimationActive={false} />
                   </BarChart>
                 </ResponsiveContainer>
-                <TableContainer component={Paper} sx={{ mt: 2, boxShadow: 'none', border: '1px solid rgba(148, 163, 184, 0.14)', overflowX: 'auto' }}>
-                  <Table size="small" sx={{ minWidth: 720 }}>
+                <TableContainer component={Paper} sx={{ mt: 2, boxShadow: 'none', border: '1px solid rgba(148, 163, 184, 0.14)', overflowX: 'visible' }}>
+                  <Table size="small" sx={{ width: '100%', tableLayout: 'fixed' }}>
                     <TableHead sx={{ bgcolor: 'rgba(245, 158, 11, 0.08)' }}>
                       <TableRow>
-                        <TableCell sx={{ fontWeight: 700 }}>Question</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 700 }}>Failure</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 700 }}>Wrong / Attempts</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 700 }}>Unanswered</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }}>Most Selected Wrong Answer</TableCell>
+                        <TableCell sx={{ fontWeight: 700, width: '34%' }}>Question</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700, width: '12%' }}>Failure</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700, width: '16%' }}>Wrong / Attempts</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700, width: '14%' }}>Unanswered</TableCell>
+                        <TableCell sx={{ fontWeight: 700, width: '24%' }}>Most Selected Wrong Answer</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {questionFailureRows.map((question, index) => (
                         <TableRow key={question.questionId} hover>
-                          <TableCell sx={{ maxWidth: 260 }}>
+                          <TableCell sx={{ overflowWrap: 'anywhere' }}>
                             <Typography variant="caption" sx={{ fontWeight: 800, color: index === 0 ? 'error.main' : 'text.secondary' }}>
                               {question.questionLabel}{index === 0 ? ' - Most missed' : ''}
                             </Typography>
@@ -381,7 +421,9 @@ export default function TeacherAnalyticsPage() {
                           </TableCell>
                           <TableCell align="right">{question.wrongCount}/{question.totalAttempts}</TableCell>
                           <TableCell align="right">{question.unansweredCount}</TableCell>
-                          <TableCell>{question.mostSelectedWrongOptionContent || 'N/A'}</TableCell>
+                          <TableCell sx={{ overflowWrap: 'anywhere' }}>
+                            {question.mostSelectedWrongOptionContent || 'N/A'}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

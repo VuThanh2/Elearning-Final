@@ -533,16 +533,22 @@ export class QuizAttemptSubmittedProjector {
          ),
          ranked AS (
            SELECT
-             STUDENT_ID,
-             AVERAGE_SCORE,
-             TOTAL_ATTEMPTS,
+             ss.STUDENT_ID,
+             ss.AVERAGE_SCORE,
+             ss.TOTAL_ATTEMPTS,
              COUNT(*) OVER ()                                         AS TOTAL_RANKED_STUDENTS,
-             ROUND(AVG(AVERAGE_SCORE) OVER (), 2)                     AS SECTION_AVG_SCORE,
-             MAX(HIGHEST_SCORE) OVER ()                               AS SECTION_HIGH_SCORE,
-             MIN(LOWEST_SCORE) OVER ()                                AS SECTION_LOW_SCORE,
-             DENSE_RANK() OVER (ORDER BY AVERAGE_SCORE DESC)          AS RANK_IN_SECTION,
-             PERCENT_RANK() OVER (ORDER BY AVERAGE_SCORE)             AS PERCENTILE
-           FROM student_scores
+             ROUND(AVG(ss.AVERAGE_SCORE) OVER (), 2)                  AS SECTION_AVG_SCORE,
+             MAX(ss.HIGHEST_SCORE) OVER ()                            AS SECTION_HIGH_SCORE,
+             MIN(ss.LOWEST_SCORE) OVER ()                             AS SECTION_LOW_SCORE,
+             DENSE_RANK() OVER (ORDER BY ss.AVERAGE_SCORE DESC)       AS RANK_IN_SECTION,
+             ROUND(
+               (SELECT COUNT(*)
+                FROM student_scores lower_scores
+                WHERE lower_scores.AVERAGE_SCORE < ss.AVERAGE_SCORE)
+               / NULLIF((SELECT COUNT(*) FROM student_scores), 0),
+               4
+             )                                                        AS PERCENTILE
+           FROM student_scores ss
          )
          SELECT
            :sectionId       AS SECTION_ID,
