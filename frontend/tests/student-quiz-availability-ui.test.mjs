@@ -165,3 +165,128 @@ test('admin report average score is displayed as a score number, not a percentag
     'Admin report tree average score should not append a percent sign.',
   );
 });
+
+test('student analytics average result is displayed as a score number instead of a percent', () => {
+  const source = readSource('../src/modules/student/pages/StudentAnalyticsPage.tsx');
+
+  assert.match(
+    source,
+    /formatResultScore\(averageRatio \* 100\)/,
+    'Average result card should show a plain 0-100 score number, not a percentage.',
+  );
+  assert.match(
+    source,
+    /Best result \$\{formatResultScore\(bestRatio \* 100\)\}/,
+    'Average result detail should also show the best result as a plain score number.',
+  );
+  assert.doesNotMatch(
+    source,
+    /'Average result'[\s\S]{0,140}formatRatio\(averageRatio/,
+    'Average result card must not append a percent sign.',
+  );
+});
+
+test('student section benchmark explains that rank and average use the same section score basis', () => {
+  const source = readSource('../src/modules/student/pages/StudentAnalyticsPage.tsx');
+
+  assert.match(
+    source,
+    /Rank basis: section average/,
+    'Student benchmark should make clear that section rank is based on the section average shown below.',
+  );
+  assert.match(
+    source,
+    /Better than \{percentileProgress\}% of ranked students by section average/,
+    'The percentile label should explicitly use the same section-average basis as the ranking.',
+  );
+});
+
+test('teacher analytics score formatting strips unnecessary .0 in score/maxScore values', () => {
+  const source = readSource('../src/modules/teacher/pages/TeacherAnalyticsPage.tsx');
+
+  assert.match(
+    source,
+    /formatCompactNumber/,
+    'Teacher analytics should use compact score formatting so 100/100 does not become 100.0/100.0.',
+  );
+  assert.doesNotMatch(
+    source,
+    /const formatScoreValue[\s\S]{0,140}formatters\.formatNumber\(safeNumber\(value\), 1\)/,
+    'Teacher analytics score formatting should not force one decimal place for every score.',
+  );
+});
+
+test('teacher score distribution chart uses score ranges and whole-student y-axis ticks', () => {
+  const source = readSource('../src/modules/teacher/pages/TeacherAnalyticsPage.tsx');
+
+  assert.match(
+    source,
+    /scoreRangeLabel/,
+    'Score Distribution x-axis should show numeric score ranges instead of Vietnamese bucket names.',
+  );
+  assert.match(
+    source,
+    /<XAxis dataKey="scoreRangeLabel"/,
+    'Score Distribution x-axis should bind to the numeric score-range label.',
+  );
+  assert.match(
+    source,
+    /allowDecimals=\{false\}/,
+    'Score Distribution y-axis should display whole student counts only.',
+  );
+  assert.match(
+    source,
+    /Students by score range/,
+    'Score Distribution chart should label the metric clearly.',
+  );
+  assert.match(
+    source,
+    /<Bar dataKey="studentCount"[\s\S]{0,120}isAnimationActive=\{false\}/,
+    'Score Distribution bars should render immediately and reliably in browser validation screenshots.',
+  );
+});
+
+test('teacher question difficulty chart labels failure-rate units and avoids horizontal table scroll', () => {
+  const source = readSource('../src/modules/teacher/pages/TeacherAnalyticsPage.tsx');
+
+  assert.match(
+    source,
+    /Failure rate by question \(%\)/,
+    'Question Difficulty should label failure-rate units clearly.',
+  );
+  assert.match(
+    source,
+    /tickFormatter=\{\(value\) => formatters\.formatPercentage\(Number\(value\), 0\)\}/,
+    'Question Difficulty y-axis should render percentages, not raw decimals like 0.5.',
+  );
+  assert.match(
+    source,
+    /tableLayout: 'fixed'/,
+    'Question Difficulty table should fit its card instead of requiring horizontal scrolling.',
+  );
+  assert.doesNotMatch(
+    source,
+    /minWidth: 720/,
+    'Question Difficulty table should not force a horizontal scrollbar.',
+  );
+  assert.match(
+    source,
+    /<Bar dataKey="failureRate"[\s\S]{0,120}isAnimationActive=\{false\}/,
+    'Question Difficulty bars should render immediately and reliably in browser validation screenshots.',
+  );
+});
+
+test('teacher quiz performance table does not hide score columns behind a horizontal scroll', () => {
+  const source = readSource('../src/modules/teacher/pages/TeacherAnalyticsPage.tsx');
+
+  assert.doesNotMatch(
+    source,
+    /minWidth: 860/,
+    'Teacher Quiz Performance should fit the available card width instead of hiding Highest/Lowest behind a horizontal scrollbar.',
+  );
+  assert.match(
+    source,
+    /tableLayout: 'fixed'/,
+    'Teacher Quiz Performance should use a fixed table layout so all score columns stay visible.',
+  );
+});

@@ -172,6 +172,27 @@ test("student class ranking benchmark averages attempts within each quiz before 
   );
 });
 
+test("student class ranking percentile counts students below the same section-average score", () => {
+  const source = readFileSync(
+    new URL(
+      "../src/modules/analytic/infrastructure/projectors/QuizAttemptSubmittedProjector.ts",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  assert.match(
+    source,
+    /lower_scores\.AVERAGE_SCORE < ss\.AVERAGE_SCORE/,
+    "Percentile should mean students below this student's section average, so #1 of 2 shows better than 50%, not 100%.",
+  );
+  assert.doesNotMatch(
+    source,
+    /PERCENT_RANK\(\) OVER \(ORDER BY AVERAGE_SCORE\)/,
+    "Percentile must not use ascending PERCENT_RANK because it makes #1 of 2 look better than 100% of ranked students.",
+  );
+});
+
 test("score distribution query prefers Oracle projection over legacy Mongo fallback", async () => {
   const oracleRepo = {
     findScoreDistribution: async () => ({
