@@ -130,19 +130,15 @@ export class QuizAttemptSubmittedProjector {
            WHERE QUIZ_ID = :quizId
              AND SECTION_ID = :sectionId
              AND STATUS IN ('SUBMITTED', 'EXPIRED')
-         ), student_best AS (
-           SELECT STUDENT_ID, MAX(SCORE) AS BEST_SCORE
-           FROM finalized
-           GROUP BY STUDENT_ID
          ), attempt_stats AS (
            SELECT
              :quizId AS QUIZ_ID,
              :sectionId AS SECTION_ID,
              (SELECT COUNT(*) FROM finalized) AS TOTAL_ATTEMPTS,
-             (SELECT COUNT(*) FROM student_best) AS ATTEMPTED_STUDENTS,
-             ROUND((SELECT AVG(BEST_SCORE) FROM student_best), 2) AS AVERAGE_SCORE,
-             (SELECT MAX(BEST_SCORE) FROM student_best) AS HIGHEST_SCORE,
-             (SELECT MIN(BEST_SCORE) FROM student_best) AS LOWEST_SCORE
+             (SELECT COUNT(DISTINCT STUDENT_ID) FROM finalized) AS ATTEMPTED_STUDENTS,
+             ROUND((SELECT AVG(SCORE) FROM finalized), 2) AS AVERAGE_SCORE,
+             (SELECT MAX(SCORE) FROM finalized) AS HIGHEST_SCORE,
+             (SELECT MIN(SCORE) FROM finalized) AS LOWEST_SCORE
            FROM DUAL
          )
          SELECT
@@ -509,29 +505,44 @@ export class QuizAttemptSubmittedProjector {
     await this.oracleConnection.execute(
       `MERGE INTO ANALYTICS_STUDENT_CLASS_RANKING tgt
        USING (
-         WITH ranked AS (
+         WITH attempts AS (
+           SELECT STUDENT_ID, QUIZ_ID, SCORE
+           FROM   ANALYTICS_STUDENT_QUIZ_RESULT
+           WHERE  SECTION_ID = :sectionId
+         ),
+         quiz_attempt_avgs AS (
            SELECT
-             sqr.STUDENT_ID,
-             ROUND(AVG(best.BEST_SCORE), 2)                          AS AVERAGE_SCORE,
-             SUM(best.ATTEMPT_COUNT)                                  AS TOTAL_ATTEMPTS,
+             STUDENT_ID,
+             QUIZ_ID,
+             ROUND(AVG(SCORE), 2) AS QUIZ_AVERAGE_SCORE,
+             COUNT(*)             AS QUIZ_ATTEMPTS,
+             MAX(SCORE)           AS QUIZ_HIGH_SCORE,
+             MIN(SCORE)           AS QUIZ_LOW_SCORE
+           FROM attempts
+           GROUP BY STUDENT_ID, QUIZ_ID
+         ),
+         student_scores AS (
+           SELECT
+             STUDENT_ID,
+             ROUND(AVG(QUIZ_AVERAGE_SCORE), 2)                        AS AVERAGE_SCORE,
+             SUM(QUIZ_ATTEMPTS)                                       AS TOTAL_ATTEMPTS,
+             MAX(QUIZ_HIGH_SCORE)                                     AS HIGHEST_SCORE,
+             MIN(QUIZ_LOW_SCORE)                                      AS LOWEST_SCORE
+           FROM quiz_attempt_avgs
+           GROUP BY STUDENT_ID
+         ),
+         ranked AS (
+           SELECT
+             STUDENT_ID,
+             AVERAGE_SCORE,
+             TOTAL_ATTEMPTS,
              COUNT(*) OVER ()                                         AS TOTAL_RANKED_STUDENTS,
-             AVG(AVG(best.BEST_SCORE)) OVER ()                        AS SECTION_AVG_SCORE,
-             MAX(AVG(best.BEST_SCORE)) OVER ()                        AS SECTION_HIGH_SCORE,
-             MIN(AVG(best.BEST_SCORE)) OVER ()                        AS SECTION_LOW_SCORE,
-             DENSE_RANK() OVER (ORDER BY AVG(best.BEST_SCORE) DESC)   AS RANK_IN_SECTION,
-             PERCENT_RANK() OVER (ORDER BY AVG(best.BEST_SCORE))      AS PERCENTILE
-           FROM (
-             SELECT STUDENT_ID, QUIZ_ID,
-                    MAX(SCORE) AS BEST_SCORE, COUNT(*) AS ATTEMPT_COUNT
-             FROM   ANALYTICS_STUDENT_QUIZ_RESULT
-             WHERE  SECTION_ID = :sectionId
-             GROUP  BY STUDENT_ID, QUIZ_ID
-           ) best
-           JOIN (
-             SELECT STUDENT_ID FROM ANALYTICS_STUDENT_QUIZ_RESULT
-             WHERE SECTION_ID = :sectionId GROUP BY STUDENT_ID
-           ) sqr ON sqr.STUDENT_ID = best.STUDENT_ID
-           GROUP BY sqr.STUDENT_ID
+             ROUND(AVG(AVERAGE_SCORE) OVER (), 2)                     AS SECTION_AVG_SCORE,
+             MAX(HIGHEST_SCORE) OVER ()                               AS SECTION_HIGH_SCORE,
+             MIN(LOWEST_SCORE) OVER ()                                AS SECTION_LOW_SCORE,
+             DENSE_RANK() OVER (ORDER BY AVERAGE_SCORE DESC)          AS RANK_IN_SECTION,
+             PERCENT_RANK() OVER (ORDER BY AVERAGE_SCORE)             AS PERCENTILE
+           FROM student_scores
          )
          SELECT
            :sectionId       AS SECTION_ID,

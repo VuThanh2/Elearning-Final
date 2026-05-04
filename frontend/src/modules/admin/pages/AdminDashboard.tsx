@@ -132,7 +132,7 @@ export default function AdminDashboard() {
                   <Grid item xs={12} sm={4}>
                     <Typography variant="caption" color="text.secondary">Avg Score</Typography>
                     <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                      {(node.averageScore ?? 0).toFixed(1)}%
+                      {(node.averageScore ?? 0).toFixed(1)}
                     </Typography>
                   </Grid>
                 </Grid>
@@ -216,7 +216,7 @@ export default function AdminDashboard() {
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom>Average Score</Typography>
                   <Typography variant="h4" sx={{ fontWeight: 800, color: 'success.main' }}>
-                    {(report?.averageScore || 0).toFixed(1)}%
+                    {(report?.averageScore || 0).toFixed(1)}
                   </Typography>
                 </CardContent>
               </Card>

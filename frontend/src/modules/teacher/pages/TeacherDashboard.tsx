@@ -19,7 +19,6 @@ import {
 } from '@mui/material';
 import SchoolRoundedIcon from '@mui/icons-material/SchoolRounded';
 import QuizRoundedIcon from '@mui/icons-material/QuizRounded';
-import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded';
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
 import PageShell from '../../shared/components/PageShell';
 import { useAuth, useNotification } from '../../shared';
@@ -338,48 +337,6 @@ export default function TeacherDashboard() {
         <Grid container spacing={3}>
           {sections.map((section) => renderSectionCard(section, view))}
         </Grid>
-      )}
-
-      {view === 'overview' && sections.length > 0 && (
-        <Card
-          sx={{
-            mt: 3,
-            borderRadius: 5,
-            border: '1px solid rgba(148, 163, 184, 0.14)',
-            boxShadow: '0 12px 32px rgba(15, 23, 42, 0.08)',
-          }}
-        >
-          <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={7}>
-                <Typography variant="h6" sx={{ fontWeight: 900, mb: 1 }}>
-                  Suggested next step
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 620 }}>
-                  Start from the section you plan to teach next, create a draft quiz there, then review analytics after the first submissions arrive.
-                </Typography>
-              </Grid>
-              <Grid item xs={12} md={5}>
-                <Stack direction={{ xs: 'column', sm: 'row', md: 'column' }} spacing={1.5}>
-                  <Button
-                    variant="contained"
-                    startIcon={<QuizRoundedIcon />}
-                    onClick={() => navigate(`/teacher/sections/${sections[0].sectionId}`)}
-                  >
-                    Open quiz management
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={<AnalyticsRoundedIcon />}
-                    onClick={() => navigate(`/teacher/sections/${sections[0].sectionId}/analytics`)}
-                  >
-                    Open analytics
-                  </Button>
-                </Stack>
-              </Grid>
-            </Grid>
-          </CardContent>
-        </Card>
       )}
 
       <Dialog open={sectionPickerOpen} onClose={() => setSectionPickerOpen(false)} fullWidth maxWidth="sm">

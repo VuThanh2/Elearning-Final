@@ -5,7 +5,6 @@ import {
   AtRiskStudent,
   StudentClassRanking,
   ScoreDistribution,
-  QuestionFailureRate,
   HierarchicalReportNode,
 } from '../../shared/types';
 
@@ -80,8 +79,8 @@ export const analyticsService = {
   async getQuestionFailureRate(
     sectionId: string,
     quizId: string
-  ): Promise<QuestionFailureRate[]> {
-    const response = await api.get<QuestionFailureRate[]>(
+  ): Promise<any> {
+    const response = await api.get<any>(
       `/analytics/sections/${sectionId}/quizzes/${quizId}/question-failure-rate`
     );
     return response.data;

@@ -5,6 +5,8 @@ import test from "node:test";
 import { GetPublishedQuizListUseCase } from "../src/modules/quiz/application/use-cases/GetPublishedQuizListUseCase";
 import { QuizPerformanceQuery } from "../src/modules/analytic/application/queries/QuizPerformanceQuery";
 import { AtRiskStudentQuery } from "../src/modules/analytic/application/queries/AtRiskStudentQuery";
+import { ScoreDistributionQuery } from "../src/modules/analytic/application/queries/ScoreDistributionQuery";
+import { QuestionFailureRateQuery } from "../src/modules/analytic/application/queries/QuestionFailureRateQuery";
 
 const cache = {
   get: async () => null,
@@ -15,7 +17,7 @@ const assignedAcademicService = {
   isTeacherAssignedToSection: async () => true,
 };
 
-const date = new Date("2026-05-04T00:00:00.000Z");
+const date = new Date("2099-05-04T00:00:00.000Z");
 
 function publishedQuiz(maxAttempts = 3) {
   return {
@@ -106,6 +108,175 @@ test("teacher quiz performance prefers Oracle projection and keeps maxScore", as
   assert.equal(performance?.completionRate, 0.5);
   assert.equal(performance?.totalStudents, 2);
   assert.equal((performance as any)?.maxScore, 100);
+});
+
+test("quiz performance projection averages all finalized attempts", () => {
+  const source = readFileSync(
+    new URL(
+      "../src/modules/analytic/infrastructure/projectors/QuizAttemptSubmittedProjector.ts",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  assert.match(
+    source,
+    /ROUND\(\(SELECT AVG\(SCORE\) FROM finalized\), 2\) AS AVERAGE_SCORE/,
+    "A quiz with attempts 0/100 and 100/100 should report average score near 50, not the best attempt.",
+  );
+  assert.match(
+    source,
+    /\(SELECT MAX\(SCORE\) FROM finalized\) AS HIGHEST_SCORE/,
+    "Highest score should reflect the best finalized attempt score.",
+  );
+  assert.match(
+    source,
+    /\(SELECT MIN\(SCORE\) FROM finalized\) AS LOWEST_SCORE/,
+    "Lowest score should reflect the weakest finalized attempt score.",
+  );
+  assert.doesNotMatch(
+    source,
+    /ROUND\(\(SELECT AVG\(BEST_SCORE\) FROM student_best\), 2\) AS AVERAGE_SCORE/,
+    "Teacher quiz performance must not hide retry failures by averaging bestScore per student.",
+  );
+});
+
+test("student class ranking benchmark averages attempts within each quiz before section ranking", () => {
+  const source = readFileSync(
+    new URL(
+      "../src/modules/analytic/infrastructure/projectors/QuizAttemptSubmittedProjector.ts",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  assert.match(
+    source,
+    /quiz_attempt_avgs AS/,
+    "Student benchmark should calculate per-quiz attempt averages before computing section averages.",
+  );
+  assert.match(
+    source,
+    /GROUP BY STUDENT_ID, QUIZ_ID/,
+    "Student benchmark should keep quizzes equally weighted instead of over-weighting quizzes with more retries.",
+  );
+  assert.match(
+    source,
+    /ROUND\(AVG\(QUIZ_AVERAGE_SCORE\), 2\)\s+AS AVERAGE_SCORE/,
+    "A student's section average should be the average of each quiz's attempt average.",
+  );
+  assert.doesNotMatch(
+    source,
+    /AVG\(best\.BEST_SCORE\)/,
+    "Student section benchmark must not keep using bestScore-only averages.",
+  );
+});
+
+test("score distribution query prefers Oracle projection over legacy Mongo fallback", async () => {
+  const oracleRepo = {
+    findScoreDistribution: async () => ({
+      quizId: "quiz-1",
+      sectionId: "section-1",
+      quizTitle: "Oracle histogram",
+      sectionName: "Section A",
+      maxScore: 100,
+      totalRankedStudents: 2,
+      lastUpdatedAt: date,
+      scoreRanges: [
+        {
+          label: "Oracle 0-50",
+          rangeStartPct: 0,
+          rangeEndPct: 0.5,
+          rangeStart: 0,
+          rangeEnd: 50,
+          isUpperBoundInclusive: false,
+          studentCount: 1,
+          percentage: 0.5,
+        },
+      ],
+    }),
+  };
+  const badMongoFallback = {
+    find: () => ({
+      lean: () => ({
+        exec: async () => [
+          {
+            quizId: "quiz-1",
+            quizTitle: "Mongo fallback should not win",
+            sectionId: "section-1",
+            studentId: "student-1",
+            score: 100,
+            maxScore: 100,
+          },
+        ],
+      }),
+    }),
+  };
+
+  const query = new ScoreDistributionQuery(
+    oracleRepo as any,
+    assignedAcademicService as any,
+    badMongoFallback,
+    cache as any,
+  );
+
+  const report = await query.execute("teacher-1", "TEACHER", "quiz-1", "section-1");
+
+  assert.equal(report?.quizTitle, "Oracle histogram");
+  assert.equal(report?.scoreRanges[0]?.label, "Oracle 0-50");
+});
+
+test("question failure rate query returns the most missed question first", async () => {
+  const mongoRepo = {
+    findQuestionFailureRate: async () => ({
+      quizId: "quiz-1",
+      sectionId: "section-1",
+      quizTitle: "Misconception quiz",
+      sectionName: "Section A",
+      totalSubmittedAttempts: 6,
+      lastUpdatedAt: date,
+      questions: [
+        {
+          questionId: "easy-question",
+          questionContent: "Easy question",
+          questionType: "single_choice",
+          totalQuestionAttempts: 6,
+          correctAnswers: 5,
+          wrongAnswers: 1,
+          unansweredCount: 0,
+          failureRate: 0.1667,
+          wrongOptionCounts: {},
+          mostSelectedWrongOptionId: null,
+          mostSelectedWrongOptionContent: null,
+        },
+        {
+          questionId: "hard-question",
+          questionContent: "Hard question",
+          questionType: "single_choice",
+          totalQuestionAttempts: 6,
+          correctAnswers: 1,
+          wrongAnswers: 5,
+          unansweredCount: 0,
+          failureRate: 0.8333,
+          wrongOptionCounts: { option_b: 5 },
+          mostSelectedWrongOptionId: "option_b",
+          mostSelectedWrongOptionContent: "Common distractor",
+        },
+      ],
+      processedAttemptIds: [],
+    }),
+  };
+  const query = new QuestionFailureRateQuery(
+    mongoRepo as any,
+    assignedAcademicService as any,
+    cache as any,
+  );
+
+  const report = await query.execute("teacher-1", "quiz-1", "section-1");
+
+  assert.equal(report?.questions[0]?.questionId, "hard-question");
+  assert.equal(report?.questions[0]?.mostSelectedWrongOptionContent, "Common distractor");
+  assert.equal(report?.questions[0]?.wrongAnswers, 5);
 });
 
 test("at-risk query preserves Oracle student names and both risk dimensions", async () => {

@@ -11,9 +11,8 @@
 //   - Rule: Analytics Must Be Based On Submitted Attempts
 //     → chỉ attempt có status SUBMITTED hoặc EXPIRED mới được tính
 //
-// averageScore: tính theo bestScore per student (không phải avg mọi attempt),
-//   để phản ánh đúng năng lực thực sự của student.
-//   Công thức: AVG( MAX(score) GROUP BY studentId )
+// averageScore: AVG(score) trên tất cả finalized attempts của quiz.
+//   Giữ retry failures hiển thị đúng: 0/100 và 100/100 thì average = 50.
 //
 // completionRate: attemptedStudents / totalStudents
 //   totalStudents = số student enroll vào section (từ Academic Context)
@@ -34,9 +33,9 @@ export interface QuizPerformanceView {
 
   // Score metrics
   readonly maxScore:      number; // max score configured for the quiz
-  readonly averageScore: number; // AVG(bestScore per student), làm tròn 2 chữ số
-  readonly highestScore: number; // MAX(bestScore per student)
-  readonly lowestScore:  number; // MIN(bestScore per student)
+  readonly averageScore: number; // AVG(score), làm tròn 2 chữ số
+  readonly highestScore: number; // MAX(score)
+  readonly lowestScore:  number; // MIN(score)
 
   // Derived (tính tại projection layer, lưu sẵn) 
   readonly completionRate: number; // attemptedStudents / totalStudents, 0–1

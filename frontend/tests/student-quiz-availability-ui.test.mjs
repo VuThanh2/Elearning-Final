@@ -76,3 +76,92 @@ test('teacher at-risk cards label participation and score instead of showing an 
     'At-risk cards should not render participation and score as an unlabeled "100% / 20" pair',
   );
 });
+
+test('teacher dashboard does not render the suggested next step card', () => {
+  const source = readSource('../src/modules/teacher/pages/TeacherDashboard.tsx');
+
+  assert.doesNotMatch(
+    source,
+    /Suggested next step/,
+    'Teacher dashboard should not show the suggested next step card from the spec screenshot',
+  );
+  assert.doesNotMatch(
+    source,
+    /Open quiz management/,
+    'Removing the card should also remove its shortcut button copy',
+  );
+});
+
+test('teacher analytics reads score distribution and question failure report DTOs from backend', () => {
+  const source = readSource('../src/modules/teacher/pages/TeacherAnalyticsPage.tsx');
+
+  assert.match(
+    source,
+    /scoreRanges/,
+    'Score distribution endpoint returns scoreRanges, not the legacy buckets field',
+  );
+  assert.doesNotMatch(
+    source,
+    /scoreData\.buckets/,
+    'Teacher analytics must not drop ScoreDistributionView by reading scoreData.buckets',
+  );
+  assert.match(
+    source,
+    /questionData\.questions/,
+    'Question failure endpoint returns an object with a questions array',
+  );
+  assert.match(
+    source,
+    /selectedQuizId/,
+    'Teacher analytics should let the teacher choose which quiz drives ScoreDistributionView and QuestionFailureRateView.',
+  );
+  assert.match(
+    source,
+    /getScoreDistribution\(sectionId, selectedQuizId\)/,
+    'Score distribution should use the selected quiz, not only the first quiz in the performance table.',
+  );
+  assert.match(
+    source,
+    /getQuestionFailureRate\(sectionId, selectedQuizId\)/,
+    'Question failure report should use the selected quiz, not only the first quiz in the performance table.',
+  );
+  assert.match(
+    source,
+    /Most missed/,
+    'Teacher analytics should identify the question with the highest failure rate.',
+  );
+  assert.match(
+    source,
+    /Wrong \/ Attempts/,
+    'Teacher analytics should show wrong answers against total attempts for each question.',
+  );
+  assert.match(
+    source,
+    /mostSelectedWrongOptionContent/,
+    'Teacher analytics should expose the distractor students selected most often.',
+  );
+});
+
+test('teacher quiz performance table exposes the extra performance attributes', () => {
+  const source = readSource('../src/modules/teacher/pages/TeacherAnalyticsPage.tsx');
+
+  assert.match(source, /attemptedStudents/, 'QuizPerformance should show attempted students.');
+  assert.match(source, /totalStudents/, 'QuizPerformance should show total students.');
+  assert.match(source, /highestScore/, 'QuizPerformance should show highest score.');
+  assert.match(source, /lowestScore/, 'QuizPerformance should show lowest score.');
+});
+
+test('admin report average score is displayed as a score number, not a percentage', () => {
+  const source = readSource('../src/modules/admin/pages/AdminDashboard.tsx');
+
+  assert.doesNotMatch(
+    source,
+    /Average Score[\s\S]{0,260}\.toFixed\(1\)\}%/,
+    'Admin report summary average score should not append a percent sign.',
+  );
+  assert.doesNotMatch(
+    source,
+    /Avg Score[\s\S]{0,260}\.toFixed\(1\)\}%/,
+    'Admin report tree average score should not append a percent sign.',
+  );
+});
