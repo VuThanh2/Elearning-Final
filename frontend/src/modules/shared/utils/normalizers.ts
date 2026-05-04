@@ -45,6 +45,15 @@ export function normalizeQuiz(data: any): Quiz {
     hiddenReason: quizSource.hiddenReason,
     totalQuestions,
     questionPoints,
+    attemptsUsed: Number.isFinite(Number(quizSource.attemptsUsed)) ? Number(quizSource.attemptsUsed) : 0,
+    attemptsRemaining: Number.isFinite(Number(quizSource.attemptsRemaining))
+      ? Number(quizSource.attemptsRemaining)
+      : Number.isFinite(Number(quizSource.maxAttempts))
+        ? Number(quizSource.maxAttempts)
+        : 1,
+    canStart: typeof quizSource.canStart === 'boolean'
+      ? quizSource.canStart
+      : true,
     questions: Array.isArray(questionsSource)
       ? questionsSource.map(normalizeQuestion)
       : [],

@@ -55,7 +55,15 @@ const normalizeRatio = (value: unknown): number => {
 const formatRatio = (value: unknown, decimals = 1): string =>
   formatters.formatPercentage(normalizeRatio(value), decimals);
 
-const formatScoreMetric = (value: unknown): string => formatters.formatNumber(toSafeNumber(value), 1);
+const formatCompactNumber = (value: unknown, maxDecimals = 1): string => {
+  const parsed = toSafeNumber(value);
+  if (Number.isInteger(parsed)) return String(parsed);
+  return parsed.toFixed(maxDecimals).replace(/\.?0+$/, '');
+};
+
+const formatScoreMetric = (value: unknown): string => formatCompactNumber(value, 1);
+
+const formatResultScore = (value: unknown): string => formatCompactNumber(value, 1);
 
 const formatMaybeDateTime = (value?: string): string => {
   if (!value) return 'Not available';
@@ -365,7 +373,7 @@ export default function StudentAnalyticsPage() {
                     Best result
                   </Typography>
                   <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                    {attemptCount > 0 ? formatRatio(bestRatio, 1) : 'No data'}
+                    {attemptCount > 0 ? formatResultScore(bestRatio * 100) : 'No data'}
                   </Typography>
                 </Box>
               </Stack>
@@ -419,8 +427,8 @@ export default function StudentAnalyticsPage() {
             )}
             {renderMetricCard(
               'Average result',
-              attemptCount > 0 ? formatRatio(averageRatio, 1) : 'No data',
-              attemptCount > 0 ? `Best result ${formatRatio(bestRatio, 1)}` : 'Complete a quiz to populate this',
+              attemptCount > 0 ? formatResultScore(averageRatio * 100) : 'No data',
+              attemptCount > 0 ? `Best result ${formatResultScore(bestRatio * 100)}` : 'Complete a quiz to populate this',
               <QueryStatsRoundedIcon />
             )}
             {renderMetricCard(
@@ -457,7 +465,7 @@ export default function StudentAnalyticsPage() {
                         Section benchmark
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        Compare your average score against the section baseline and current ceiling.
+                        Rank basis: section average across quizzes. Benchmark rows compare your section average with section-level class metrics.
                       </Typography>
                     </Box>
 
@@ -488,7 +496,7 @@ export default function StudentAnalyticsPage() {
                             </Grid>
                             <Grid item xs={12} md={8}>
                               <Typography variant="body2" sx={{ fontWeight: 700, mb: 1 }}>
-                                Better than {percentileProgress}% of ranked students
+                                Better than {percentileProgress}% of ranked students by section average
                               </Typography>
                               <LinearProgress
                                 variant="determinate"
@@ -512,7 +520,7 @@ export default function StudentAnalyticsPage() {
 
                         <Stack spacing={2}>
                           {renderBenchmarkRow(
-                            'Your average',
+                            'Your section average',
                             myRank.averageScore,
                             'linear-gradient(90deg, #00754A 0%, #006241 100%)'
                           )}
@@ -522,12 +530,12 @@ export default function StudentAnalyticsPage() {
                             'linear-gradient(90deg, #2b5148 0%, #006241 100%)'
                           )}
                           {renderBenchmarkRow(
-                            'Highest score',
+                            'Section highest score',
                             myRank.sectionHighestScore,
                             'linear-gradient(90deg, #cba258 0%, #b78d43 100%)'
                           )}
                           {renderBenchmarkRow(
-                            'Lowest score',
+                            'Section lowest score',
                             myRank.sectionLowestScore,
                             'linear-gradient(90deg, #9aa59f 0%, #7a8a84 100%)'
                           )}

@@ -1,3 +1,11 @@
+const formatScoreValue = (value: number): string => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return '0';
+
+  const rounded = Math.round(parsed * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+};
+
 export const formatters = {
   formatDate: (date: string | Date): string => {
     const d = new Date(date);
@@ -34,7 +42,7 @@ export const formatters = {
   },
 
   formatScore: (score: number, maxScore: number): string => {
-    return `${score}/${maxScore}`;
+    return `${formatScoreValue(score)}/${formatScoreValue(maxScore)}`;
   },
 
   formatPercentage: (value: number, decimals = 1): string => {

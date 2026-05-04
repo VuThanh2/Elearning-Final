@@ -18,10 +18,11 @@ export interface QuizPerformanceDTO {
   readonly attemptedStudents: number; // số student distinct đã attempt ≥ 1 lần
   readonly totalStudents:     number; // tổng student enroll trong section
 
-  // Score metrics (bestScore per student)
-  readonly averageScore: number; // AVG(bestScore per student), 2 decimal
-  readonly highestScore: number; // MAX(bestScore per student)
-  readonly lowestScore:  number; // MIN(bestScore per student)
+  // Score metrics across all finalized attempts for this quiz.
+  readonly maxScore: number; // max score configured for the quiz
+  readonly averageScore: number; // AVG(score), 2 decimal
+  readonly highestScore: number; // MAX(score)
+  readonly lowestScore:  number; // MIN(score)
 
   readonly completionRate: number; // attemptedStudents / totalStudents, 0–1
 

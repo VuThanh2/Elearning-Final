@@ -51,7 +51,7 @@ export class OracleAnalyticsRepository implements IOracleAnalyticsRepository {
       const result = await this.connection.execute<QuizPerformanceModel>(
         `SELECT QUIZ_ID, SECTION_ID, QUIZ_TITLE, SECTION_NAME,
                 TOTAL_ATTEMPTS, ATTEMPTED_STUDENTS, TOTAL_STUDENTS,
-                AVERAGE_SCORE, HIGHEST_SCORE, LOWEST_SCORE,
+                MAX_SCORE, AVERAGE_SCORE, HIGHEST_SCORE, LOWEST_SCORE,
                 COMPLETION_RATE, LAST_UPDATED_AT
          FROM   ANALYTICS_QUIZ_PERFORMANCE
          WHERE  QUIZ_ID    = :quizId
@@ -80,7 +80,7 @@ export class OracleAnalyticsRepository implements IOracleAnalyticsRepository {
       const result = await this.connection.execute<QuizPerformanceModel>(
         `SELECT QUIZ_ID, SECTION_ID, QUIZ_TITLE, SECTION_NAME,
                 TOTAL_ATTEMPTS, ATTEMPTED_STUDENTS, TOTAL_STUDENTS,
-                AVERAGE_SCORE, HIGHEST_SCORE, LOWEST_SCORE,
+                MAX_SCORE, AVERAGE_SCORE, HIGHEST_SCORE, LOWEST_SCORE,
                 COMPLETION_RATE, LAST_UPDATED_AT
          FROM   ANALYTICS_QUIZ_PERFORMANCE
          WHERE  SECTION_ID = :sectionId
@@ -283,6 +283,87 @@ export class OracleAnalyticsRepository implements IOracleAnalyticsRepository {
     } catch (err) {
       throw new Error(
         `AnalyticsOracleRepository.findScoreDistribution: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+
+  async findScoreDistributionFromResults(
+    quizId:    string,
+    sectionId: string,
+  ): Promise<ScoreDistributionView | null> {
+    try {
+      const headerResult = await this.connection.execute<ScoreDistributionModel>(
+        `SELECT
+           r.QUIZ_ID,
+           r.SECTION_ID,
+           MAX(r.QUIZ_TITLE) AS QUIZ_TITLE,
+           au.UNIT_NAME AS SECTION_NAME,
+           MAX(r.MAX_SCORE) AS MAX_SCORE,
+           COUNT(DISTINCT r.STUDENT_ID) AS TOTAL_RANKED_STUDENTS,
+           MAX(r.SUBMITTED_AT) AS LAST_UPDATED_AT
+         FROM ANALYTICS_STUDENT_QUIZ_RESULT r
+         JOIN ACADEMIC_UNITS au ON au.UNIT_ID = r.SECTION_ID AND au.TYPE = 'SECTION'
+         WHERE r.QUIZ_ID = :quizId
+           AND r.SECTION_ID = :sectionId
+           AND r.STATUS IN ('SUBMITTED', 'EXPIRED')
+         GROUP BY r.QUIZ_ID, r.SECTION_ID, au.UNIT_NAME`,
+        { quizId, sectionId },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT },
+      );
+
+      const header = headerResult.rows?.[0];
+      if (!header) return null;
+
+      const scoreResult = await this.connection.execute<{ STUDENT_ID: string; BEST_SCORE: number }>(
+        `SELECT STUDENT_ID, MAX(SCORE) AS BEST_SCORE
+         FROM ANALYTICS_STUDENT_QUIZ_RESULT
+         WHERE QUIZ_ID = :quizId
+           AND SECTION_ID = :sectionId
+           AND STATUS IN ('SUBMITTED', 'EXPIRED')
+         GROUP BY STUDENT_ID`,
+        { quizId, sectionId },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT },
+      );
+
+      const bestScores = (scoreResult.rows ?? []).map((row) => Number(row.BEST_SCORE) || 0);
+      const maxScore = Number(header.MAX_SCORE) || 0;
+      const ranges = [
+        { order: 1, label: 'Dưới trung bình', startPct: 0.00, endPct: 0.50, inclusive: false },
+        { order: 2, label: 'Trung bình',      startPct: 0.50, endPct: 0.70, inclusive: false },
+        { order: 3, label: 'Khá',             startPct: 0.70, endPct: 0.85, inclusive: false },
+        { order: 4, label: 'Giỏi',            startPct: 0.85, endPct: 1.00, inclusive: true },
+      ];
+
+      const buckets: ScoreDistributionBucketModel[] = ranges.map((range) => {
+        const rangeStart = Math.round(range.startPct * maxScore * 100) / 100;
+        const rangeEnd = Math.round(range.endPct * maxScore * 100) / 100;
+        const studentCount = bestScores.filter((score) =>
+          score >= rangeStart && (range.inclusive ? score <= rangeEnd : score < rangeEnd)
+        ).length;
+
+        return {
+          QUIZ_ID: quizId,
+          SECTION_ID: sectionId,
+          BUCKET_ORDER: range.order,
+          LABEL: range.label,
+          RANGE_START_PCT: range.startPct,
+          RANGE_END_PCT: range.endPct,
+          RANGE_START: rangeStart,
+          RANGE_END: rangeEnd,
+          IS_UPPER_BOUND_INCLUSIVE: range.inclusive ? 1 : 0,
+          STUDENT_COUNT: studentCount,
+          PERCENTAGE: bestScores.length > 0
+            ? Math.round((studentCount / bestScores.length) * 10000) / 10000
+            : 0,
+        };
+      });
+
+      return ScoreDistributionMapper.toDomain(header, buckets);
+    } catch (err) {
+      throw new Error(
+        `AnalyticsOracleRepository.findScoreDistributionFromResults: ${
           err instanceof Error ? err.message : String(err)
         }`,
       );

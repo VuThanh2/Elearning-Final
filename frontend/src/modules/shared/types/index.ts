@@ -104,6 +104,9 @@ export interface Quiz {
   updatedAt?: string | null;
   totalQuestions?: number;   // Backend includes this
   questionPoints?: number;   // Backend includes this
+  attemptsUsed?: number;
+  attemptsRemaining?: number;
+  canStart?: boolean;
 }
 
 export interface CreateQuizRequest {
@@ -176,10 +179,16 @@ export interface QuizPerformance {
   quizId: string;
   quizTitle: string;
   sectionId: string;
+  sectionName?: string;
   totalAttempts: number;
+  attemptedStudents?: number;
+  totalStudents?: number;
   completionRate: number;
   averageScore: number;
+  highestScore?: number;
+  lowestScore?: number;
   maxScore: number;
+  lastUpdatedAt?: string;
 }
 
 export interface StudentQuizResult {
@@ -202,10 +211,17 @@ export interface StudentQuizResult {
 
 export interface AtRiskStudent {
   studentId: string;
-  studentName: string;
-  riskLevel: 'HIGH' | 'MEDIUM' | 'LOW';
-  participationRate: number;
+  studentName?: string;
+  studentFullname?: string;
+  riskLevel?: 'HIGH' | 'MEDIUM' | 'LOW';
+  participationRate?: number;
+  totalQuizzes?: number;
+  attemptedQuizzes?: number;
+  quizParticipationRate?: number;
   averageScore: number;
+  lowestScore?: number;
+  participationRiskLevel?: 'HIGH' | 'MEDIUM' | 'LOW';
+  averageScoreRiskLevel?: 'HIGH' | 'MEDIUM' | 'LOW';
   lastAttemptDate?: string;
 }
 
@@ -235,25 +251,43 @@ export interface StudentClassRanking {
 }
 
 export interface ScoreDistributionBucket {
-  minScore: number;
-  maxScore: number;
-  count: number;
+  label: string;
+  rangeStartPct: number;
+  rangeEndPct: number;
+  rangeStart: number;
+  rangeEnd: number;
+  isUpperBoundInclusive: boolean;
+  studentCount: number;
   percentage: number;
+  minScore?: number;
+  maxScore?: number;
+  count?: number;
 }
 
 export interface ScoreDistribution {
   quizId: string;
+  sectionId?: string;
   quizTitle: string;
+  sectionName?: string;
   maxScore: number;
-  buckets: ScoreDistributionBucket[];
+  totalRankedStudents?: number;
+  lastUpdatedAt?: string;
+  scoreRanges?: ScoreDistributionBucket[];
+  buckets?: ScoreDistributionBucket[];
 }
 
 export interface QuestionFailureRate {
   questionId: string;
   questionContent: string;
   failureRate: number;
-  totalAttempts: number;
-  correctCount: number;
+  totalQuestionAttempts?: number;
+  correctAnswers?: number;
+  wrongAnswers?: number;
+  unansweredCount?: number;
+  mostSelectedWrongOptionId?: string | null;
+  mostSelectedWrongOptionContent?: string | null;
+  totalAttempts?: number;
+  correctCount?: number;
 }
 
 export interface HierarchicalReportNode {

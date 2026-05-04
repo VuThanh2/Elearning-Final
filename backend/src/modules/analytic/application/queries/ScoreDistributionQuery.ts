@@ -33,8 +33,31 @@ export class ScoreDistributionQuery {
     const cached = await this.cache.get<ScoreDistributionDTO>(key);
     if (cached) return cached;
 
-    // Try MongoDB first (aggregates score data)
     try {
+      const view = await this.oracleRepo.findScoreDistribution(quizId, sectionId);
+      const dto  = view ? this.toDTO(view) : null;
+      if (dto && this.hasCompleteBuckets(dto)) {
+        await this.cache.set(key, dto, AnalyticsCacheTTL.HEAVY);
+        return dto;
+      }
+    } catch (err) {
+      throw err;
+    }
+
+    try {
+      const view = await this.oracleRepo.findScoreDistributionFromResults(quizId, sectionId);
+      const dto = view ? this.toDTO(view) : null;
+      if (dto && this.hasCompleteBuckets(dto)) {
+        await this.cache.set(key, dto, AnalyticsCacheTTL.NORMAL);
+        return dto;
+      }
+    } catch (err) {
+      // Direct Oracle fallback is best-effort; legacy Mongo fallback below can
+      // still satisfy old data and tests if this projection path is unavailable.
+    }
+
+    try {
+      // Fallback only for legacy data before the Oracle projection is populated.
       const mongoData = await this.mongoModel
         .find({ quizId, sectionId })
         .lean()
@@ -43,6 +66,15 @@ export class ScoreDistributionQuery {
       if (mongoData && mongoData.length > 0) {
         // Get max score from first document
         const maxScore = mongoData[0].maxScore || 100;
+
+        const bestByStudent = new Map<string, any>();
+        for (const attempt of mongoData) {
+          const existing = bestByStudent.get(attempt.studentId);
+          if (!existing || (attempt.score || 0) > (existing.score || 0)) {
+            bestByStudent.set(attempt.studentId, attempt);
+          }
+        }
+        const rankedAttempts = Array.from(bestByStudent.values());
 
         // Create score buckets (0-20%, 20-40%, etc.)
         const buckets: ScoreRangeBucketDTO[] = [];
@@ -56,10 +88,11 @@ export class ScoreDistributionQuery {
 
         for (const range of bucketRanges) {
           let count = 0;
-          for (const attempt of mongoData) {
+          for (const attempt of rankedAttempts) {
             const score = attempt.score || 0;
             const percentage = score / maxScore;
-            if (percentage >= range.pctStart && percentage < range.pctEnd) {
+            const inUpperBucket = range.pctEnd === 1.0 && percentage === range.pctEnd;
+            if (percentage >= range.pctStart && (percentage < range.pctEnd || inUpperBucket)) {
               count += 1;
             }
           }
@@ -72,7 +105,7 @@ export class ScoreDistributionQuery {
             rangeEnd: Math.round(range.pctEnd * maxScore),
             isUpperBoundInclusive: range.pctEnd === 1.0,
             studentCount: count,
-            percentage: mongoData.length > 0 ? count / mongoData.length : 0,
+            percentage: rankedAttempts.length > 0 ? count / rankedAttempts.length : 0,
           });
         }
 
@@ -82,7 +115,7 @@ export class ScoreDistributionQuery {
           quizTitle: mongoData[0].quizTitle || 'Untitled Quiz',
           sectionName: sectionId,
           maxScore,
-          totalRankedStudents: mongoData.length,
+          totalRankedStudents: rankedAttempts.length,
           lastUpdatedAt: new Date().toISOString(),
           scoreRanges: buckets,
         };
@@ -91,17 +124,10 @@ export class ScoreDistributionQuery {
         return dto;
       }
     } catch (err) {
-      // Silently fall back to Oracle if MongoDB fails
+      // Legacy fallback is best-effort only.
     }
 
-    try {
-      const view = await this.oracleRepo.findScoreDistribution(quizId, sectionId);
-      const dto  = view ? this.toDTO(view) : null;
-      if (dto) await this.cache.set(key, dto, AnalyticsCacheTTL.HEAVY);
-      return dto;
-    } catch (err) {
-      throw err;
-    }
+    return null;
   }
 
   // private helpers
@@ -117,6 +143,18 @@ export class ScoreDistributionQuery {
       lastUpdatedAt:       view.lastUpdatedAt.toISOString(),
       scoreRanges:         view.scoreRanges.map((b) => this.toBucketDTO(b)),
     };
+  }
+
+  private hasCompleteBuckets(dto: ScoreDistributionDTO): boolean {
+    if (dto.totalRankedStudents <= 0) return true;
+    if (dto.scoreRanges.length === 0) return false;
+
+    const bucketedStudents = dto.scoreRanges.reduce(
+      (sum, bucket) => sum + bucket.studentCount,
+      0,
+    );
+
+    return bucketedStudents === dto.totalRankedStudents;
   }
 
   private toBucketDTO(bucket: ScoreRangeBucket): ScoreRangeBucketDTO {

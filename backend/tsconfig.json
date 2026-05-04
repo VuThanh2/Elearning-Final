@@ -41,5 +41,6 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "moduleResolution": "node"
-  }
+  },
+  "exclude": ["dist", "node_modules", "tests"]
 }

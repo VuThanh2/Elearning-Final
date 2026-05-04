@@ -31,7 +31,7 @@ export interface StudentClassRankingView {
   readonly studentFullname: string;
 
   // Student's score 
-  readonly averageScore:    number; // AVG(bestScore per quiz) của student này
+  readonly averageScore:    number; // AVG(per-quiz attempt average) của student này
   readonly totalAttempts:   number; // tổng số attempt student đã làm trong section
 
   // Ranking 
