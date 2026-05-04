@@ -465,7 +465,7 @@ export default function StudentAnalyticsPage() {
                         Section benchmark
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        Rank basis: section average across quizzes.
+                        Rank basis: section average across quizzes. Benchmark rows compare your section average with section-level class metrics.
                       </Typography>
                     </Box>
 
@@ -520,7 +520,7 @@ export default function StudentAnalyticsPage() {
 
                         <Stack spacing={2}>
                           {renderBenchmarkRow(
-                            'Your average',
+                            'Your section average',
                             myRank.averageScore,
                             'linear-gradient(90deg, #00754A 0%, #006241 100%)'
                           )}
@@ -530,12 +530,12 @@ export default function StudentAnalyticsPage() {
                             'linear-gradient(90deg, #2b5148 0%, #006241 100%)'
                           )}
                           {renderBenchmarkRow(
-                            'Highest score',
+                            'Section highest score',
                             myRank.sectionHighestScore,
                             'linear-gradient(90deg, #cba258 0%, #b78d43 100%)'
                           )}
                           {renderBenchmarkRow(
-                            'Lowest score',
+                            'Section lowest score',
                             myRank.sectionLowestScore,
                             'linear-gradient(90deg, #9aa59f 0%, #7a8a84 100%)'
                           )}
