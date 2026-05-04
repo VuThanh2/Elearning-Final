@@ -186,6 +186,26 @@ test('student analytics average result is displayed as a score number instead of
   );
 });
 
+test('shared score formatter rounds score UI values to one decimal without long floats', () => {
+  const source = readSource('../src/modules/shared/utils/formatters.ts');
+
+  assert.doesNotMatch(
+    source,
+    /return `\$\{score\}\/\$\{maxScore\}`/,
+    'Score UI should not render raw floating-point values such as 66.6666666667/100.',
+  );
+  assert.match(
+    source,
+    /formatScoreValue\(score\)[\s\S]{0,80}formatScoreValue\(maxScore\)/,
+    'Both score and maxScore should pass through the same one-decimal UI formatter.',
+  );
+  assert.match(
+    source,
+    /toFixed\(1\)/,
+    'Score UI should round fractional values to one decimal place.',
+  );
+});
+
 test('student section benchmark explains that rank and average use the same section score basis', () => {
   const source = readSource('../src/modules/student/pages/StudentAnalyticsPage.tsx');
 

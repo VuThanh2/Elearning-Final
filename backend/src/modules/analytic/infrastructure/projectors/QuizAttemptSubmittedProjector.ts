@@ -49,8 +49,11 @@ export class QuizAttemptSubmittedProjector {
         AnalyticCacheKey.sectionRanking(event.sectionId),
         AnalyticCacheKey.scoreDistribution(event.quizId, event.sectionId),
       ]);
- 
+
       // Pattern invalidation cho HierarchicalReport (nhiều permutation)
+      await this.cache.invalidatePattern(
+        AnalyticCacheKey.studentRankingBySectionPattern(event.sectionId),
+      );
       await this.cache.invalidatePattern(AnalyticCacheKey.HIER_PATTERN);
     } catch (err) {
       // Log nhưng KHÔNG throw — cache invalidation failure không

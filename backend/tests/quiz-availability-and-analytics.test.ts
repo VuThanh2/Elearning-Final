@@ -7,6 +7,7 @@ import { QuizPerformanceQuery } from "../src/modules/analytic/application/querie
 import { AtRiskStudentQuery } from "../src/modules/analytic/application/queries/AtRiskStudentQuery";
 import { ScoreDistributionQuery } from "../src/modules/analytic/application/queries/ScoreDistributionQuery";
 import { QuestionFailureRateQuery } from "../src/modules/analytic/application/queries/QuestionFailureRateQuery";
+import { QuizAttemptSubmittedProjector } from "../src/modules/analytic/infrastructure/projectors/QuizAttemptSubmittedProjector";
 
 const cache = {
   get: async () => null,
@@ -190,6 +191,42 @@ test("student class ranking percentile counts students below the same section-av
     source,
     /PERCENT_RANK\(\) OVER \(ORDER BY AVERAGE_SCORE\)/,
     "Percentile must not use ascending PERCENT_RANK because it makes #1 of 2 look better than 100% of ranked students.",
+  );
+});
+
+test("student class ranking cache invalidates every student ranking in the section", async () => {
+  const invalidatedKeys: string[] = [];
+  const invalidatedPatterns: string[] = [];
+  const cacheSpy = {
+    get: async () => null,
+    set: async () => undefined,
+    invalidate: async (keys: string[]) => {
+      invalidatedKeys.push(...keys);
+    },
+    invalidatePattern: async (pattern: string) => {
+      invalidatedPatterns.push(pattern);
+    },
+  };
+  const projector = new QuizAttemptSubmittedProjector(
+    {} as any,
+    {} as any,
+    {} as any,
+    cacheSpy as any,
+  );
+
+  await (projector as any).invalidateCacheAfterWrite({
+    quizId: "quiz-1",
+    sectionId: "section-1",
+    studentId: "student-2",
+  });
+
+  assert.ok(
+    invalidatedKeys.includes("analytics:rank_stu:student-2:section-1"),
+    "The submitting student's exact ranking cache key should still be invalidated.",
+  );
+  assert.ok(
+    invalidatedPatterns.includes("analytics:rank_stu:*:section-1"),
+    "Any finalized attempt can change every student's rank, totalRankedStudents, highest, and lowest benchmark values.",
   );
 });
 
