@@ -373,40 +373,64 @@ export class QuizAttemptSubmittedProjector {
       const rangeEnd   = Math.round(b.endPct   * maxScore * 100) / 100;
       await this.oracleConnection.execute(
         `MERGE INTO ANALYTICS_SCORE_DISTRIBUTION_BUCKET tgt
-         USING DUAL ON (
-           tgt.QUIZ_ID = :quizId AND tgt.SECTION_ID = :sectionId
-           AND tgt.BUCKET_ORDER = :bucketOrder
+         USING (
+           WITH best_scores AS (
+             SELECT STUDENT_ID, MAX(SCORE) AS BEST_SCORE
+             FROM   ANALYTICS_STUDENT_QUIZ_RESULT
+             WHERE  QUIZ_ID = :quizId
+               AND  SECTION_ID = :sectionId
+               AND  STATUS IN ('SUBMITTED', 'EXPIRED')
+             GROUP  BY STUDENT_ID
+           ), bucket_count AS (
+             SELECT COUNT(*) AS STUDENT_COUNT
+             FROM best_scores
+             WHERE BEST_SCORE >= :rangeStart
+               AND BEST_SCORE ${b.inclusive ? '<=' : '<'} :rangeEnd
+           )
+           SELECT
+             :quizId      AS QUIZ_ID,
+             :sectionId   AS SECTION_ID,
+             :bucketOrder AS BUCKET_ORDER,
+             :label       AS LABEL,
+             :startPct    AS RANGE_START_PCT,
+             :endPct      AS RANGE_END_PCT,
+             :rangeStart  AS RANGE_START,
+             :rangeEnd    AS RANGE_END,
+             :inclusive   AS IS_UPPER_BOUND_INCLUSIVE,
+             bc.STUDENT_COUNT AS STUDENT_COUNT,
+             NVL(ROUND(
+               bc.STUDENT_COUNT / NULLIF(
+                 (SELECT TOTAL_RANKED_STUDENTS FROM ANALYTICS_SCORE_DISTRIBUTION
+                  WHERE QUIZ_ID = :quizId AND SECTION_ID = :sectionId),
+                 0
+               ),
+               4
+             ), 0) AS PERCENTAGE,
+             SYSTIMESTAMP AS LAST_UPDATED_AT
+           FROM bucket_count bc
+         ) src ON (
+           tgt.QUIZ_ID = src.QUIZ_ID AND tgt.SECTION_ID = src.SECTION_ID
+           AND tgt.BUCKET_ORDER = src.BUCKET_ORDER
          )
          WHEN MATCHED THEN UPDATE SET
-           tgt.STUDENT_COUNT = (
-             SELECT COUNT(DISTINCT STUDENT_ID) FROM (
-               SELECT STUDENT_ID, MAX(SCORE) AS BEST_SCORE
-               FROM   ANALYTICS_STUDENT_QUIZ_RESULT
-               WHERE  QUIZ_ID = :quizId AND SECTION_ID = :sectionId
-               GROUP  BY STUDENT_ID
-             ) WHERE BEST_SCORE >= :rangeStart
-               AND BEST_SCORE ${b.inclusive ? '<=' : '<'} :rangeEnd
-           ),
-           tgt.PERCENTAGE = (
-             SELECT COUNT(DISTINCT STUDENT_ID) FROM (
-               SELECT STUDENT_ID, MAX(SCORE) AS BEST_SCORE
-               FROM   ANALYTICS_STUDENT_QUIZ_RESULT
-               WHERE  QUIZ_ID = :quizId AND SECTION_ID = :sectionId
-               GROUP  BY STUDENT_ID
-             ) WHERE BEST_SCORE >= :rangeStart
-               AND BEST_SCORE ${b.inclusive ? '<=' : '<'} :rangeEnd
-           ) / NULLIF(
-             (SELECT TOTAL_RANKED_STUDENTS FROM ANALYTICS_SCORE_DISTRIBUTION
-              WHERE QUIZ_ID = :quizId AND SECTION_ID = :sectionId), 0
-           )
+           tgt.LABEL                    = src.LABEL,
+           tgt.RANGE_START_PCT          = src.RANGE_START_PCT,
+           tgt.RANGE_END_PCT            = src.RANGE_END_PCT,
+           tgt.RANGE_START              = src.RANGE_START,
+           tgt.RANGE_END                = src.RANGE_END,
+           tgt.IS_UPPER_BOUND_INCLUSIVE = src.IS_UPPER_BOUND_INCLUSIVE,
+           tgt.STUDENT_COUNT            = src.STUDENT_COUNT,
+           tgt.PERCENTAGE               = src.PERCENTAGE,
+           tgt.LAST_UPDATED_AT          = src.LAST_UPDATED_AT
          WHEN NOT MATCHED THEN INSERT (
            QUIZ_ID, SECTION_ID, BUCKET_ORDER, LABEL,
            RANGE_START_PCT, RANGE_END_PCT, RANGE_START, RANGE_END,
-           IS_UPPER_BOUND_INCLUSIVE, STUDENT_COUNT, PERCENTAGE
+           IS_UPPER_BOUND_INCLUSIVE, STUDENT_COUNT, PERCENTAGE, LAST_UPDATED_AT
          ) VALUES (
-           :quizId, :sectionId, :bucketOrder, :label,
-           :startPct, :endPct, :rangeStart, :rangeEnd,
-           :inclusive, 0, 0
+           src.QUIZ_ID, src.SECTION_ID, src.BUCKET_ORDER, src.LABEL,
+           src.RANGE_START_PCT, src.RANGE_END_PCT, src.RANGE_START, src.RANGE_END,
+           src.IS_UPPER_BOUND_INCLUSIVE, src.STUDENT_COUNT, src.PERCENTAGE,
+           src.LAST_UPDATED_AT
          )`,
         {
           quizId: e.quizId, sectionId: e.sectionId,

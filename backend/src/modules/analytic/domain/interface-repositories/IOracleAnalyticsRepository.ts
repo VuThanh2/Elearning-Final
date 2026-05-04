@@ -99,6 +99,13 @@ export interface IOracleAnalyticsRepository {
     sectionId: string,
   ): Promise<ScoreDistributionView | null>;
 
+  // Fallback: build distribution directly from finalized quiz result rows
+  // when the materialized bucket projection is not complete yet.
+  findScoreDistributionFromResults(
+    quizId:    string,
+    sectionId: string,
+  ): Promise<ScoreDistributionView | null>;
+
   // HierarchicalQuizReportView — Actor: Admin
 
   // Lấy toàn bộ flat list quiz report theo hierarchy.

@@ -36,12 +36,24 @@ export class ScoreDistributionQuery {
     try {
       const view = await this.oracleRepo.findScoreDistribution(quizId, sectionId);
       const dto  = view ? this.toDTO(view) : null;
-      if (dto) {
+      if (dto && this.hasCompleteBuckets(dto)) {
         await this.cache.set(key, dto, AnalyticsCacheTTL.HEAVY);
         return dto;
       }
     } catch (err) {
       throw err;
+    }
+
+    try {
+      const view = await this.oracleRepo.findScoreDistributionFromResults(quizId, sectionId);
+      const dto = view ? this.toDTO(view) : null;
+      if (dto && this.hasCompleteBuckets(dto)) {
+        await this.cache.set(key, dto, AnalyticsCacheTTL.NORMAL);
+        return dto;
+      }
+    } catch (err) {
+      // Direct Oracle fallback is best-effort; legacy Mongo fallback below can
+      // still satisfy old data and tests if this projection path is unavailable.
     }
 
     try {
@@ -131,6 +143,18 @@ export class ScoreDistributionQuery {
       lastUpdatedAt:       view.lastUpdatedAt.toISOString(),
       scoreRanges:         view.scoreRanges.map((b) => this.toBucketDTO(b)),
     };
+  }
+
+  private hasCompleteBuckets(dto: ScoreDistributionDTO): boolean {
+    if (dto.totalRankedStudents <= 0) return true;
+    if (dto.scoreRanges.length === 0) return false;
+
+    const bucketedStudents = dto.scoreRanges.reduce(
+      (sum, bucket) => sum + bucket.studentCount,
+      0,
+    );
+
+    return bucketedStudents === dto.totalRankedStudents;
   }
 
   private toBucketDTO(bucket: ScoreRangeBucket): ScoreRangeBucketDTO {

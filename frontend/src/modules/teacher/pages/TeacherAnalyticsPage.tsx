@@ -236,7 +236,53 @@ export default function TeacherAnalyticsPage() {
           <Card sx={{ borderRadius: 4, boxShadow: '0 12px 32px rgba(15, 23, 42, 0.08)' }}>
             <CardContent>
               <Typography variant="h6" sx={{ fontWeight: 800, mb: 2 }}>Quiz Performance</Typography>
-              <TableContainer component={Paper} sx={{ boxShadow: 'none', border: '1px solid rgba(148, 163, 184, 0.14)', overflowX: 'visible' }}>
+              <Stack spacing={1.5} sx={{ display: { xs: 'flex', md: 'none' } }}>
+                {performance.length === 0 ? (
+                  <Box sx={{ py: 3, textAlign: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">No quiz data yet</Typography>
+                  </Box>
+                ) : performance.map((perf) => (
+                  <Box
+                    key={perf.quizId}
+                    sx={{
+                      p: 1.5,
+                      borderRadius: 2,
+                      bgcolor: '#f8fafc',
+                      border: '1px solid rgba(148, 163, 184, 0.18)',
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ fontWeight: 800, overflowWrap: 'anywhere', mb: 1.25 }}>
+                      {perf.quizTitle}
+                    </Typography>
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                        gap: 1,
+                      }}
+                    >
+                      {[
+                        ['Attempts', perf.totalAttempts],
+                        ['Students', `${safeNumber(perf.attemptedStudents)}/${safeNumber(perf.totalStudents)}`],
+                        ['Completion', formatters.formatPercentage(perf.completionRate, 1)],
+                        ['Average', formatScoreWithMax(perf.averageScore, perf.maxScore)],
+                        ['Highest', formatScoreWithMax(perf.highestScore, perf.maxScore)],
+                        ['Lowest', formatScoreWithMax(perf.lowestScore, perf.maxScore)],
+                      ].map(([label, value]) => (
+                        <Box key={label} sx={{ minWidth: 0 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                            {label}
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 700, overflowWrap: 'anywhere' }}>
+                            {value}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  </Box>
+                ))}
+              </Stack>
+              <TableContainer component={Paper} sx={{ display: { xs: 'none', md: 'block' }, boxShadow: 'none', border: '1px solid rgba(148, 163, 184, 0.14)', overflowX: 'visible' }}>
                 <Table size="small" sx={{ width: '100%', tableLayout: 'fixed', '& .MuiTableCell-root': { px: 1 } }}>
                   <TableHead sx={{ bgcolor: 'rgba(15, 118, 110, 0.06)' }}>
                     <TableRow>
@@ -368,28 +414,52 @@ export default function TeacherAnalyticsPage() {
               <CardContent>
                 <Typography variant="h6" sx={{ fontWeight: 800 }}>Question Difficulty</Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Failure rate by question (%)
+                  Question list sorted by failure rate
                 </Typography>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={questionFailureRows}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="questionLabel" />
-                    <YAxis
-                      domain={[0, 1]}
-                      ticks={[0, 0.25, 0.5, 0.75, 1]}
-                      tickFormatter={(value) => formatters.formatPercentage(Number(value), 0)}
-                    />
-                    <Tooltip
-                      formatter={(value, name) =>
-                        name === 'failureRate'
-                          ? [formatters.formatPercentage(Number(value), 1), 'Failure rate']
-                          : [value as number, name as string]
-                      }
-                    />
-                    <Bar dataKey="failureRate" fill="#f59e0b" radius={[8, 8, 0, 0]} isAnimationActive={false} />
-                  </BarChart>
-                </ResponsiveContainer>
-                <TableContainer component={Paper} sx={{ mt: 2, boxShadow: 'none', border: '1px solid rgba(148, 163, 184, 0.14)', overflowX: 'visible' }}>
+                <Stack spacing={1.5} sx={{ display: { xs: 'flex', md: 'none' } }}>
+                  {questionFailureRows.map((question, index) => (
+                    <Box
+                      key={question.questionId}
+                      sx={{
+                        p: 1.5,
+                        borderRadius: 2,
+                        bgcolor: index === 0 ? 'rgba(254, 242, 242, 0.72)' : '#f8fafc',
+                        border: '1px solid rgba(148, 163, 184, 0.18)',
+                      }}
+                    >
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: index === 0 ? 'error.main' : 'text.secondary' }}>
+                        {question.questionLabel}{index === 0 ? ' - Most missed' : ''}
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 700, overflowWrap: 'anywhere', mb: 1.25 }}>
+                        {question.questionContent}
+                      </Typography>
+                      <Box
+                        sx={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                          gap: 1,
+                        }}
+                      >
+                        {[
+                          ['Failure', formatters.formatPercentage(question.failureRate, 1)],
+                          ['Wrong / Attempts', `${question.wrongCount}/${question.totalAttempts}`],
+                          ['Unanswered', question.unansweredCount],
+                          ['Most wrong answer', question.mostSelectedWrongOptionContent || 'N/A'],
+                        ].map(([label, value]) => (
+                          <Box key={label} sx={{ minWidth: 0 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                              {label}
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 700, overflowWrap: 'anywhere' }}>
+                              {value}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                  ))}
+                </Stack>
+                <TableContainer component={Paper} sx={{ display: { xs: 'none', md: 'block' }, boxShadow: 'none', border: '1px solid rgba(148, 163, 184, 0.14)', overflowX: 'visible' }}>
                   <Table size="small" sx={{ width: '100%', tableLayout: 'fixed' }}>
                     <TableHead sx={{ bgcolor: 'rgba(245, 158, 11, 0.08)' }}>
                       <TableRow>
