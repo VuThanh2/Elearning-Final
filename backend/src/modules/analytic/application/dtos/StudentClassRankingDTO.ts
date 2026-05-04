@@ -18,7 +18,7 @@ export interface StudentClassRankingDTO {
   readonly sectionName:     string;
   readonly studentFullname: string; // chỉ có khi Student xem rank bản thân
 
-  readonly averageScore:  number; // AVG(bestScore per quiz) của student này
+  readonly averageScore:  number; // AVG(per-quiz attempt average) của student này
   readonly totalAttempts: number; // tổng attempt đã làm trong section
 
   readonly rankInSection:       number; // DENSE_RANK(), bắt đầu từ 1

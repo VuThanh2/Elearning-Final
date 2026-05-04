@@ -1,0 +1,86 @@
+Elearning sample accounts
+Source: backend/src/modules/identity/infrastructure/scripts/seed.sql
+
+Frontend:
+http://localhost:5173
+
+Backend:
+http://localhost:3000
+
+Passwords by role:
+Admin   : Admin@123
+Teacher : Teacher@123
+Student : Student@123
+
+Admin accounts
+1. System Admin
+   Email    : admin@school.edu.vn
+   Password : Admin@123
+   Role     : Admin
+
+Teacher accounts
+1. Nguyen Van An
+   Email    : nguyen.van.an@school.edu.vn
+   Password : Teacher@123
+   Role     : Teacher
+
+2. Tran Thi Bich
+   Email    : tran.thi.bich@school.edu.vn
+   Password : Teacher@123
+   Role     : Teacher
+
+3. Le Minh Duc
+   Email    : le.minh.duc@school.edu.vn
+   Password : Teacher@123
+   Role     : Teacher
+
+Student accounts
+1. SV001 - Pham Quoc Bao
+   Email    : sv001@student.school.edu.vn
+   Password : Student@123
+   Role     : Student
+
+2. SV002 - Hoang Thi Mai
+   Email    : sv002@student.school.edu.vn
+   Password : Student@123
+   Role     : Student
+
+3. SV003 - Vu Dinh Khoa
+   Email    : sv003@student.school.edu.vn
+   Password : Student@123
+   Role     : Student
+
+4. SV004 - Do Thanh Tuyen
+   Email    : sv004@student.school.edu.vn
+   Password : Student@123
+   Role     : Student
+
+5. SV005 - Nguyen Minh Chau
+   Email    : sv005@student.school.edu.vn
+   Password : Student@123
+   Role     : Student
+
+6. SV006 - Le Gia Huy
+   Email    : sv006@student.school.edu.vn
+   Password : Student@123
+   Role     : Student
+
+7. SV007 - Pham Bao Lam
+   Email    : sv007@student.school.edu.vn
+   Password : Student@123
+   Role     : Student
+
+8. SV008 - Tran Tue Nhi
+   Email    : sv008@student.school.edu.vn
+   Password : Student@123
+   Role     : Student
+
+9. SV009 - Do Quang Vinh
+   Email    : sv009@student.school.edu.vn
+   Password : Student@123
+   Role     : Student
+
+10. SV010 - Bui Khanh Linh
+    Email    : sv010@student.school.edu.vn
+    Password : Student@123
+    Role     : Student

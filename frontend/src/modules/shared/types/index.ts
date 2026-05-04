@@ -179,6 +179,7 @@ export interface QuizPerformance {
   quizId: string;
   quizTitle: string;
   sectionId: string;
+  sectionName?: string;
   totalAttempts: number;
   attemptedStudents?: number;
   totalStudents?: number;
@@ -187,6 +188,7 @@ export interface QuizPerformance {
   highestScore?: number;
   lowestScore?: number;
   maxScore: number;
+  lastUpdatedAt?: string;
 }
 
 export interface StudentQuizResult {
@@ -249,25 +251,43 @@ export interface StudentClassRanking {
 }
 
 export interface ScoreDistributionBucket {
-  minScore: number;
-  maxScore: number;
-  count: number;
+  label: string;
+  rangeStartPct: number;
+  rangeEndPct: number;
+  rangeStart: number;
+  rangeEnd: number;
+  isUpperBoundInclusive: boolean;
+  studentCount: number;
   percentage: number;
+  minScore?: number;
+  maxScore?: number;
+  count?: number;
 }
 
 export interface ScoreDistribution {
   quizId: string;
+  sectionId?: string;
   quizTitle: string;
+  sectionName?: string;
   maxScore: number;
-  buckets: ScoreDistributionBucket[];
+  totalRankedStudents?: number;
+  lastUpdatedAt?: string;
+  scoreRanges?: ScoreDistributionBucket[];
+  buckets?: ScoreDistributionBucket[];
 }
 
 export interface QuestionFailureRate {
   questionId: string;
   questionContent: string;
   failureRate: number;
-  totalAttempts: number;
-  correctCount: number;
+  totalQuestionAttempts?: number;
+  correctAnswers?: number;
+  wrongAnswers?: number;
+  unansweredCount?: number;
+  mostSelectedWrongOptionId?: string | null;
+  mostSelectedWrongOptionContent?: string | null;
+  totalAttempts?: number;
+  correctCount?: number;
 }
 
 export interface HierarchicalReportNode {
