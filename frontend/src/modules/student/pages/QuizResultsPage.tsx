@@ -17,6 +17,7 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PageShell from '../../shared/components/PageShell';
 import { analyticsService } from '../services/analyticsService';
+import { quizService } from '../services/quizService';
 import { StudentAnswer, Question } from '../../shared/types';
 import { formatters } from '../../shared/utils/formatters';
 
@@ -56,6 +57,7 @@ export default function QuizResultsPage() {
   const [score, setScore] = useState(0);
   const [maxScore, setMaxScore] = useState(0);
   const [answers, setAnswers] = useState<AnswerReview[]>([]);
+  const [canRetry, setCanRetry] = useState(false);
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -90,6 +92,14 @@ export default function QuizResultsPage() {
         setScore(result?.score ?? result?.totalScore ?? submissionResponse?.score ?? 0);
         setMaxScore(result?.maxScore ?? submissionResponse?.maxScore ?? 0);
         setAnswers(reviewAnswers);
+
+        if (sectionId && quizId) {
+          const quizzes = await quizService.getPublishedQuizzes(sectionId);
+          const currentQuiz = quizzes.find((quiz) => quiz.quizId === quizId);
+          setCanRetry(Boolean(currentQuiz?.canStart && (currentQuiz.attemptsRemaining ?? 0) > 0));
+        } else {
+          setCanRetry(false);
+        }
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : 'Failed to load results';
         setError(errMsg);
@@ -123,11 +133,20 @@ export default function QuizResultsPage() {
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3, flexWrap: 'wrap' }}>
         <Button startIcon={<ArrowBackIcon />} variant="outlined" onClick={() => {
           if (sectionId) navigate(`/student/sections/${sectionId}/analytics`, { state: analyticsNavigationState });
-          else navigate(-1);
+          else navigate('/student/dashboard?view=analytics', { replace: true });
         }} sx={{ minHeight: 42 }}>
           Back to Analytics
         </Button>
-        <Button variant="text" onClick={() => navigate(-2)} sx={{ minHeight: 42 }}>Back to Quizzes</Button>
+        <Button
+          variant="text"
+          onClick={() => {
+            if (sectionId) navigate(`/student/sections/${sectionId}`, { replace: true });
+            else navigate('/student/dashboard?view=quizzes', { replace: true });
+          }}
+          sx={{ minHeight: 42 }}
+        >
+          Back to Quizzes
+        </Button>
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
@@ -195,18 +214,20 @@ export default function QuizResultsPage() {
       )}
 
       <Box sx={{ display: 'flex', gap: 2, mt: 4, flexWrap: 'wrap' }}>
-        <Button
-          variant="contained"
-          onClick={() => {
-            navigate(`/student/quiz/${quizId}/attempt`, {
-              replace: true,
-              state: { sectionId },
-            });
-          }}
-          sx={{ minHeight: 42 }}
-        >
-          Retry Quiz
-        </Button>
+        {canRetry && (
+          <Button
+            variant="contained"
+            onClick={() => {
+              navigate(`/student/quiz/${quizId}/attempt`, {
+                replace: true,
+                state: analyticsNavigationState,
+              });
+            }}
+            sx={{ minHeight: 42 }}
+          >
+            Retry Quiz
+          </Button>
+        )}
       </Box>
     </PageShell>
   );

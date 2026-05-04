@@ -77,11 +77,22 @@ export default function TeacherAnalyticsPage() {
 
         const riskData = await analyticsService.getAtRiskStudents(sectionId);
         const normalizedRiskData = riskData
-          .map((item) => ({
-            ...item,
-            participationRate: normalizeRate(item.participationRate),
-            averageScore: Number.isFinite(item.averageScore) ? item.averageScore : 0,
-          }))
+          .map((item) => {
+            const riskLevel: 'HIGH' | 'MEDIUM' | 'LOW' =
+              item.averageScoreRiskLevel === 'HIGH' || item.participationRiskLevel === 'HIGH'
+                ? 'HIGH'
+                : item.averageScoreRiskLevel === 'MEDIUM' || item.participationRiskLevel === 'MEDIUM'
+                  ? 'MEDIUM'
+                  : 'LOW';
+
+            return {
+              ...item,
+              studentName: item.studentName || item.studentFullname || item.studentId,
+              participationRate: normalizeRate(item.participationRate ?? item.quizParticipationRate),
+              averageScore: Number.isFinite(item.averageScore) ? item.averageScore : 0,
+              riskLevel,
+            };
+          })
           .filter((item) => item.riskLevel !== 'LOW' && item.studentName?.trim());
         setAtRiskStudents(normalizedRiskData);
 
@@ -185,7 +196,14 @@ export default function TeacherAnalyticsPage() {
                       <Typography sx={{ fontWeight: 700 }}>{student.studentName}</Typography>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
                         <Chip label={student.riskLevel} color={student.riskLevel === 'HIGH' ? 'error' : 'warning'} size="small" variant="outlined" />
-                        <Typography variant="body2" color="text.secondary">{formatters.formatPercentage(student.participationRate, 1)}</Typography>
+                        <Stack spacing={0.25} alignItems="flex-end">
+                          <Typography variant="caption" color="text.secondary">
+                            Participation {formatters.formatPercentage(student.participationRate ?? 0, 1)}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Avg score {formatters.formatNumber(student.averageScore, 1)} pts
+                          </Typography>
+                        </Stack>
                       </Box>
                     </Box>
                   ))}

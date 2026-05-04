@@ -90,8 +90,8 @@ export const attemptService = {
     return normalizeAttempt(response.data);
   },
 
-  async expireAttempt(attemptId: string): Promise<QuizAttempt> {
-    const response = await api.post<QuizAttempt>(`/attempts/${attemptId}/expire`, {});
+  async expireAttempt(attemptId: string, data: SubmitAttemptRequest): Promise<QuizAttempt> {
+    const response = await api.post<QuizAttempt>(`/attempts/${attemptId}/expire`, data);
     return normalizeAttempt(response.data);
   },
 };

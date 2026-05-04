@@ -118,7 +118,20 @@ export class QuizMapper {
 
   // Quiz entity → PublishedQuizSummaryDTO
   // Dành cho: GET /sections/:sectionId/quizzes/published (Student)
-  static toPublishedSummaryDTO(quiz: Quiz): PublishedQuizSummaryDTO {
+  static toPublishedSummaryDTO(
+    quiz: Quiz,
+    availability: {
+      attemptsUsed?: number;
+      attemptsRemaining?: number;
+      canStart?: boolean;
+    } = {},
+  ): PublishedQuizSummaryDTO {
+    const attemptsUsed = Math.max(0, availability.attemptsUsed ?? 0);
+    const attemptsRemaining = Math.max(
+      0,
+      availability.attemptsRemaining ?? quiz.maxAttempts.value - attemptsUsed,
+    );
+
     return {
       quizId:           quiz.quizId,
       sectionId:        quiz.sectionId,
@@ -130,6 +143,9 @@ export class QuizMapper {
       maxScore:         quiz.maxScore.value,
       totalQuestions:   quiz.questions.length,
       createdAt:        quiz.createdAt.toISOString(),
+      attemptsUsed,
+      attemptsRemaining,
+      canStart:         availability.canStart ?? attemptsRemaining > 0,
     };
   }
 

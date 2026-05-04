@@ -2,7 +2,7 @@ import { User } from "../../domain/entities/User";
 import { Role } from "../../domain/entities/Role";
 import { StudentProfile } from "../../domain/entities/StudentProfile";
 import { TeacherProfile } from "../../domain/entities/TeacherProfile";
-import { FullName } from "../../domain/value-objects/Fullname";
+import { FullName } from "../../domain/value-objects/FullName";
 import { Password } from "../../domain/value-objects/Password";
 import { UserModel } from "../models/UserModel";
 

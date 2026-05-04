@@ -12,6 +12,8 @@ import { QuizModel }                 from "../../infrastructure/models/QuizModel
 import { QuizRepository }            from "../../infrastructure/repositories/QuizRepository";
 import { SystemDateTimeProvider }    from "../../infrastructure/providers/SystemDateTimeProvider";
 import { EventEmitterProvider }      from "../../infrastructure/providers/EventEmitterProvider";
+import { QuizAttemptModel }          from "../../../quiz-attempt/infrastructure/models/QuizAttemptModel";
+import { QuizAttemptRepository }     from "../../../quiz-attempt/infrastructure/repositories/QuizAttemptRepository";
 
 // Analytics Cache + Models
 import { RedisAnalyticCache }        from "../../../analytic/infrastructure/providers/RedisAnalyticCache";
@@ -50,6 +52,7 @@ export function createQuizRouter(
 
   // Quiz Context Infrastructure
   const quizRepository   = new QuizRepository(QuizModel);
+  const attemptRepository = new QuizAttemptRepository(QuizAttemptModel);
   const dateTimeProvider = new SystemDateTimeProvider();
   const eventPublisher   = new EventEmitterProvider(eventEmitter);
   const analyticCache    = new RedisAnalyticCache(redisClient);
@@ -64,7 +67,7 @@ export function createQuizRouter(
   const getQuizUseCase        = new GetQuizUseCase(quizRepository);
   const getQuizForAttemptUseCase = new GetQuizForAttemptUseCase(quizRepository);
   const getQuizListUseCase    = new GetQuizListUseCase(quizRepository);
-  const getPublishedQuizListUseCase = new GetPublishedQuizListUseCase(quizRepository);
+  const getPublishedQuizListUseCase = new GetPublishedQuizListUseCase(quizRepository, attemptRepository);
 
   const addQuestionUseCase        = new AddQuestionUseCase(quizRepository, dateTimeProvider);
   const removeQuestionUseCase     = new RemoveQuestionUseCase(quizRepository, dateTimeProvider);

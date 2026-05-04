@@ -14,6 +14,7 @@ export interface QuizPerformanceModel {
   TOTAL_ATTEMPTS:     number;
   ATTEMPTED_STUDENTS: number;
   TOTAL_STUDENTS:     number;
+  MAX_SCORE:          number;
   AVERAGE_SCORE:      number;
   HIGHEST_SCORE:      number;
   LOWEST_SCORE:       number;

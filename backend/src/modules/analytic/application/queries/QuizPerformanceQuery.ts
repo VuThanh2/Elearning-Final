@@ -54,7 +54,18 @@ export class QuizPerformanceQuery {
     }
 
     try {
-      // Query MongoDB directly - much more reliable than Oracle with projection issues
+      const views = await this.oracleRepo.findQuizPerformanceBySection(sectionId);
+      const dtos  = views.map((view) => this.toDTO(view));
+      if (dtos.length > 0) {
+        await this.cache.set(key, dtos, AnalyticsCacheTTL.NORMAL);
+        return dtos;
+      }
+    } catch (err) {
+      throw err;
+    }
+
+    try {
+      // Fallback only for legacy data before the Oracle projection is populated.
       const mongoData = await this.mongoModel
         .find({ sectionId })
         .lean()
@@ -102,6 +113,7 @@ export class QuizPerformanceQuery {
             totalAttempts,
             attemptedStudents,
             totalStudents: attemptedStudents,
+            maxScore: quiz.attempts[0]?.maxScore || 0,
             averageScore: avgScore,
             highestScore: isFinite(highestScore) ? highestScore : 0,
             lowestScore: isFinite(lowestScore) ? lowestScore : 0,
@@ -117,14 +129,8 @@ export class QuizPerformanceQuery {
       // Silently fall back to Oracle if MongoDB fails
     }
 
-    try {
-      const views = await this.oracleRepo.findQuizPerformanceBySection(sectionId);
-      const dtos  = views.map((view) => this.toDTO(view));
-      await this.cache.set(key, dtos, AnalyticsCacheTTL.NORMAL);
-      return dtos;
-    } catch (err) {
-      throw err;
-    }
+    await this.cache.set(key, [], AnalyticsCacheTTL.NORMAL);
+    return [];
   }
 
   // private helpers 
@@ -145,6 +151,7 @@ export class QuizPerformanceQuery {
       totalAttempts:     view.totalAttempts,
       attemptedStudents: view.attemptedStudents,
       totalStudents:     view.totalStudents,
+      maxScore:          view.maxScore,
       averageScore:      view.averageScore,
       highestScore:      view.highestScore,
       lowestScore:       view.lowestScore,

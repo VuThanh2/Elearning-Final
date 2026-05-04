@@ -214,6 +214,7 @@ export class QuizController {
   ): Promise<void> {
     try {
       const result = await this.getPublishedQuizListUseCase.execute(
+        req.user!.userId,
         req.params.sectionId,
       );
       res.status(200).json(result);

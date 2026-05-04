@@ -19,6 +19,7 @@ export interface QuizPerformanceDTO {
   readonly totalStudents:     number; // tổng student enroll trong section
 
   // Score metrics (bestScore per student)
+  readonly maxScore: number; // max score configured for the quiz
   readonly averageScore: number; // AVG(bestScore per student), 2 decimal
   readonly highestScore: number; // MAX(bestScore per student)
   readonly lowestScore:  number; // MIN(bestScore per student)

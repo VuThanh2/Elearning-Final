@@ -151,15 +151,19 @@ export const analyticsService = {
 
       const courses = (faculty.courses || []).map((course: any) => {
         const cMetrics = course.summary || {};
-        const sections = (course.sections || []).map((section: any) => ({
-          id: section.sectionId,
-          name: section.sectionName,
-          level: 'SECTION' as const,
-          totalQuizzes: section.quizzes?.length || 0,
-          averageScore: cMetrics.averageScore || 0,
-          completionRate: cMetrics.completionRate || 0,
-          children: [],
-        }));
+        const sections = (course.sections || []).map((section: any) => {
+          const sMetrics = section.summary || {};
+
+          return {
+            id: section.sectionId,
+            name: section.sectionName,
+            level: 'SECTION' as const,
+            totalQuizzes: sMetrics.totalQuizzes ?? section.quizzes?.length ?? 0,
+            averageScore: sMetrics.averageScore || 0,
+            completionRate: sMetrics.completionRate || 0,
+            children: [],
+          };
+        });
 
         return {
           id: course.courseId,

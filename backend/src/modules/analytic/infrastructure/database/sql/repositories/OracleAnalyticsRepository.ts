@@ -51,7 +51,7 @@ export class OracleAnalyticsRepository implements IOracleAnalyticsRepository {
       const result = await this.connection.execute<QuizPerformanceModel>(
         `SELECT QUIZ_ID, SECTION_ID, QUIZ_TITLE, SECTION_NAME,
                 TOTAL_ATTEMPTS, ATTEMPTED_STUDENTS, TOTAL_STUDENTS,
-                AVERAGE_SCORE, HIGHEST_SCORE, LOWEST_SCORE,
+                MAX_SCORE, AVERAGE_SCORE, HIGHEST_SCORE, LOWEST_SCORE,
                 COMPLETION_RATE, LAST_UPDATED_AT
          FROM   ANALYTICS_QUIZ_PERFORMANCE
          WHERE  QUIZ_ID    = :quizId
@@ -80,7 +80,7 @@ export class OracleAnalyticsRepository implements IOracleAnalyticsRepository {
       const result = await this.connection.execute<QuizPerformanceModel>(
         `SELECT QUIZ_ID, SECTION_ID, QUIZ_TITLE, SECTION_NAME,
                 TOTAL_ATTEMPTS, ATTEMPTED_STUDENTS, TOTAL_STUDENTS,
-                AVERAGE_SCORE, HIGHEST_SCORE, LOWEST_SCORE,
+                MAX_SCORE, AVERAGE_SCORE, HIGHEST_SCORE, LOWEST_SCORE,
                 COMPLETION_RATE, LAST_UPDATED_AT
          FROM   ANALYTICS_QUIZ_PERFORMANCE
          WHERE  SECTION_ID = :sectionId

@@ -33,6 +33,7 @@ export interface QuizPerformanceView {
   readonly totalStudents:      number; // tổng student enroll trong section
 
   // Score metrics
+  readonly maxScore:      number; // max score configured for the quiz
   readonly averageScore: number; // AVG(bestScore per student), làm tròn 2 chữ số
   readonly highestScore: number; // MAX(bestScore per student)
   readonly lowestScore:  number; // MIN(bestScore per student)

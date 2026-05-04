@@ -19,6 +19,7 @@ export class QuizPerformanceMapper {
       totalAttempts:      row.TOTAL_ATTEMPTS,
       attemptedStudents:  row.ATTEMPTED_STUDENTS,
       totalStudents:      row.TOTAL_STUDENTS,
+      maxScore:           row.MAX_SCORE,
       averageScore:       row.AVERAGE_SCORE,
       highestScore:       row.HIGHEST_SCORE,
       lowestScore:        row.LOWEST_SCORE,

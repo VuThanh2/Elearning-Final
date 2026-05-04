@@ -71,4 +71,7 @@ export interface PublishedQuizSummaryDTO {
   maxScore:         number;
   totalQuestions:   number;
   createdAt:        string;   // ISO 8601
+  attemptsUsed:     number;
+  attemptsRemaining:number;
+  canStart:         boolean;
 }

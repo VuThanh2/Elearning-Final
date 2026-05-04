@@ -14,18 +14,18 @@ echo   Stopping all containers...
 for /f "tokens=*" %%A in ('docker ps -aq 2^>nul') do (
     docker stop %%A >nul 2>&1
 )
-timeout /t 2 /nobreak
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Sleep -Seconds 2"
 
 echo   Removing old containers...
 docker rm mongo_lms 2>nul
 docker rm redis_lms 2>nul
 docker rm oracle_lms 2>nul
-timeout /t 1 /nobreak
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Sleep -Seconds 1"
 
 echo   Resetting Docker compose...
 cd /d "%~dp0backend"
 call npm run docker:reset 2>nul
-timeout /t 5 /nobreak
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Sleep -Seconds 5"
 
 REM Step 1: Start Docker containers
 echo [DOCKER] Step 1: Starting Docker containers...
@@ -41,8 +41,28 @@ REM Go back to root for seeding
 cd /d "%~dp0"
 
 echo.
-echo Waiting for Oracle to be ready (60 seconds)...
-timeout /t 60 /nobreak
+echo Waiting for Oracle XEPDB1 listener to accept SQL connections...
+set ORACLE_READY=0
+for /l %%I in (1,1,60) do (
+    docker exec oracle_lms sh -c "echo 'select 1 from dual;' | sqlplus -L -S your_oracle_user/123456@//localhost:1521/XEPDB1" >nul 2>&1
+    if not errorlevel 1 (
+        set ORACLE_READY=1
+        goto ORACLE_READY
+    )
+    echo   Oracle XEPDB1 is not ready yet - attempt %%I of 60...
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Sleep -Seconds 5" >nul 2>&1
+)
+
+:ORACLE_READY
+if not "!ORACLE_READY!"=="1" (
+    echo ERROR: Oracle XEPDB1 was not ready after 300 seconds.
+    echo Last Oracle logs:
+    docker logs --tail 80 oracle_lms
+    cd /d "%~dp0"
+    pause
+    exit /b 1
+)
+echo Oracle XEPDB1 is ready.
 
 echo.
 echo [DOCKER] Checking container status...
@@ -62,11 +82,41 @@ docker cp backend\src\modules\analytic\infrastructure\scripts\init.sql    oracle
 
 echo.
 echo Running SQL scripts...
-docker exec -i oracle_lms sqlplus your_oracle_user/123456@//localhost:1521/XEPDB1 @/tmp/identity_init.sql
-docker exec -i oracle_lms sqlplus your_oracle_user/123456@//localhost:1521/XEPDB1 @/tmp/identity_seed.sql
-docker exec -i oracle_lms sqlplus your_oracle_user/123456@//localhost:1521/XEPDB1 @/tmp/academic_init.sql
-docker exec -i oracle_lms sqlplus your_oracle_user/123456@//localhost:1521/XEPDB1 @/tmp/academic_seed.sql
-docker exec -i oracle_lms sqlplus your_oracle_user/123456@//localhost:1521/XEPDB1 @/tmp/analytic_init.sql
+docker exec -i oracle_lms sqlplus -L "your_oracle_user/123456@//localhost:1521/XEPDB1" "@/tmp/identity_init.sql"
+if errorlevel 1 (
+    echo ERROR: identity_init.sql failed
+    cd /d "%~dp0"
+    pause
+    exit /b 1
+)
+docker exec -i oracle_lms sqlplus -L "your_oracle_user/123456@//localhost:1521/XEPDB1" "@/tmp/identity_seed.sql"
+if errorlevel 1 (
+    echo ERROR: identity_seed.sql failed
+    cd /d "%~dp0"
+    pause
+    exit /b 1
+)
+docker exec -i oracle_lms sqlplus -L "your_oracle_user/123456@//localhost:1521/XEPDB1" "@/tmp/academic_init.sql"
+if errorlevel 1 (
+    echo ERROR: academic_init.sql failed
+    cd /d "%~dp0"
+    pause
+    exit /b 1
+)
+docker exec -i oracle_lms sqlplus -L "your_oracle_user/123456@//localhost:1521/XEPDB1" "@/tmp/academic_seed.sql"
+if errorlevel 1 (
+    echo ERROR: academic_seed.sql failed
+    cd /d "%~dp0"
+    pause
+    exit /b 1
+)
+docker exec -i oracle_lms sqlplus -L "your_oracle_user/123456@//localhost:1521/XEPDB1" "@/tmp/analytic_init.sql"
+if errorlevel 1 (
+    echo ERROR: analytic_init.sql failed
+    cd /d "%~dp0"
+    pause
+    exit /b 1
+)
 
 echo.
 echo Oracle database seeded!
@@ -75,7 +125,7 @@ REM Step 3: Kill old processes and start backend
 echo.
 echo [BACKEND] Step 3: Starting Backend (port 3000)...
 taskkill /F /IM node.exe 2>nul
-timeout /t 1 /nobreak
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Sleep -Seconds 1"
 
 cd /d "%~dp0backend"
 
@@ -92,7 +142,7 @@ if errorlevel 1 (
 echo Backend built - starting dev server in new window...
 start "E-Learning Backend" cmd /k "npm run dev"
 
-timeout /t 5 /nobreak
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Sleep -Seconds 5"
 
 REM Step 4: Start frontend
 echo.
@@ -105,7 +155,7 @@ call npm install >nul 2>&1
 echo Starting dev server in new window...
 start "E-Learning Frontend" cmd /k "npm run dev"
 
-timeout /t 3 /nobreak
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Sleep -Seconds 3"
 
 echo.
 echo ==========================================
