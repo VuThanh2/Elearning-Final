@@ -3,8 +3,8 @@
 //   - get<T> trả về T | null, không throw khi cache miss
 //   - set/invalidate/invalidatePattern không throw khi Redis lỗi
 //     → Cache failure KHÔNG được làm crash query (degrade gracefully)
-//   - invalidatePattern chỉ dùng cho HierarchicalReport vì nó có nhiều
-//     key permutation. Các view khác dùng invalidate(exactKeys[]).
+//   - invalidatePattern dùng cho các view có nhiều key cùng phụ thuộc
+//     vào một lần ghi, ví dụ HierarchicalReport và per-student ranking.
 export interface IAnalyticCache {
   // Lấy cached value theo key.
   // Trả về null nếu cache miss hoặc Redis lỗi.
@@ -71,6 +71,11 @@ export const AnalyticCacheKey = {
   // Student xem rank của mình trong 1 section
   studentRanking: (studentId: string, sectionId: string) =>
     `analytics:rank_stu:${studentId}:${sectionId}`,
+
+  // Any submitted/expired attempt can change every student's rank and
+  // section benchmark in the same section.
+  studentRankingBySectionPattern: (sectionId: string) =>
+    `analytics:rank_stu:*:${sectionId}`,
 
   // StudentClassRankingView (full section)
   // Teacher xem toàn bộ bảng xếp hạng section
